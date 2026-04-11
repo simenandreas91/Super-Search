@@ -681,7 +681,7 @@ superSearchEngine.prototype = {
         var className = context.catalogFields.className ? record.getValue('sys_class_name') : '';
 
         if (className === 'sc_cat_item_producer') {
-            return 'Record producer';
+            return 'Bestillingsskjema';
         }
 
         return 'Bestilling';
