@@ -1,0 +1,42 @@
+[
+  {
+    "name": "page_size",
+    "label": "Page size",
+    "type": "integer",
+    "default_value": "10",
+    "section": "Behavior",
+    "hint": "Number of results shown on each page."
+  },
+  {
+    "name": "candidate_limit",
+    "label": "Candidate limit",
+    "type": "integer",
+    "default_value": "75",
+    "section": "Behavior",
+    "hint": "Maximum number of readable KB records to score in memory."
+  },
+  {
+    "name": "include_body_search",
+    "label": "Include body search",
+    "type": "boolean",
+    "default_value": "true",
+    "section": "Behavior",
+    "hint": "Include article body text as a low-weight fallback search tier."
+  },
+  {
+    "name": "article_page_id",
+    "label": "Article page ID",
+    "type": "string",
+    "default_value": "kb_article",
+    "section": "Behavior",
+    "hint": "Portal page ID used to open a KB article from the results list."
+  },
+  {
+    "name": "catalog_item_page_id",
+    "label": "Catalog item page ID",
+    "type": "string",
+    "default_value": "sc_cat_item",
+    "section": "Behavior",
+    "hint": "Portal page ID used to open a catalog item or record producer from the results list."
+  }
+]

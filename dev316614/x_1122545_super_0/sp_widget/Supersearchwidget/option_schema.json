@@ -1,0 +1,26 @@
+[
+  {
+    "name": "results_page_id",
+    "label": "Results page ID",
+    "type": "string",
+    "default_value": "search_results",
+    "section": "Behavior",
+    "hint": "Portal page ID used for search results."
+  },
+  {
+    "name": "input_placeholder",
+    "label": "Input placeholder",
+    "type": "string",
+    "default_value": "Sok i kunnskapsbasen",
+    "section": "Labels",
+    "hint": "Placeholder shown in the homepage search input."
+  },
+  {
+    "name": "button_label",
+    "label": "Button label",
+    "type": "string",
+    "default_value": "Sok",
+    "section": "Labels",
+    "hint": "Label used for the search submit button."
+  }
+]

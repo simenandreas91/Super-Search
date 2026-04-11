@@ -1,0 +1,151 @@
+{
+  "scopeMeta": {
+    "name": "x_1122545_super_0",
+    "sysId": "965dedb7c34083106b68770d05013185"
+  },
+  "scopeTree": {
+    "i2_server_development": {
+      "type": "tables",
+      "tables": {
+        "sys_script_include": {
+          "type": "records",
+          "records": {
+            "f6ae29bbc34083106b68770d05013182": {
+              "name": "superSearchEngine",
+              "updated": "2026-04-11 12:59:41",
+              "codeFields": {
+                "script": {
+                  "label": "Script",
+                  "type": "script_plain"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "i9_service_portal": {
+      "type": "tables",
+      "tables": {
+        "sp_widget": {
+          "type": "records",
+          "records": {
+            "3b9d29f7c34083106b68770d0501314c": {
+              "name": "Super search widget",
+              "updated": "2026-04-11 12:50:01",
+              "codeFields": {
+                "template": {
+                  "label": "Body HTML template",
+                  "type": "html_template"
+                },
+                "css": {
+                  "label": "CSS",
+                  "type": "css"
+                },
+                "link": {
+                  "label": "Link",
+                  "type": "script"
+                },
+                "client_script": {
+                  "label": "Client controller",
+                  "type": "script"
+                },
+                "demo_data": {
+                  "label": "Demo data",
+                  "type": "json"
+                },
+                "option_schema": {
+                  "label": "Option schema",
+                  "type": "json"
+                },
+                "script": {
+                  "label": "Server script",
+                  "type": "script"
+                },
+                "_test_urls": {
+                  "label": "Test URLs",
+                  "type": "string"
+                }
+              }
+            },
+            "419e6d7bc34083106b68770d05013136": {
+              "name": "Search results",
+              "updated": "2026-04-11 12:58:01",
+              "codeFields": {
+                "template": {
+                  "label": "Body HTML template",
+                  "type": "html_template"
+                },
+                "css": {
+                  "label": "CSS",
+                  "type": "css"
+                },
+                "link": {
+                  "label": "Link",
+                  "type": "script"
+                },
+                "client_script": {
+                  "label": "Client controller",
+                  "type": "script"
+                },
+                "demo_data": {
+                  "label": "Demo data",
+                  "type": "json"
+                },
+                "option_schema": {
+                  "label": "Option schema",
+                  "type": "json"
+                },
+                "script": {
+                  "label": "Server script",
+                  "type": "script"
+                },
+                "_test_urls": {
+                  "label": "Test URLs",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "sp_page": {
+          "type": "records",
+          "records": {
+            "611f69fbc34083106b68770d05013192": {
+              "name": "search_results",
+              "updated": "2026-04-11 12:54:51",
+              "codeFields": {
+                "css": {
+                  "label": "Page Specific CSS",
+                  "type": "css"
+                }
+              }
+            }
+          }
+        },
+        "sp_instance": {
+          "type": "records",
+          "records": {
+            "772fe9fbc34083106b68770d05013122": {
+              "name": "",
+              "updated": "2026-04-11 12:55:16",
+              "codeFields": {
+                "css": {
+                  "label": "CSS",
+                  "type": "css"
+                },
+                "widget_parameters": {
+                  "label": "Additional options, JSON format",
+                  "type": "script_server"
+                }
+              },
+              "referenceFields": {
+                "sp_widget": "419e6d7bc34083106b68770d05013136"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

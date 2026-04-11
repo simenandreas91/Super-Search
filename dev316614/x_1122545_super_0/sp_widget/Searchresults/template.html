@@ -1,0 +1,66 @@
+<div class="super-search-results">
+  <div class="super-search-results__header" ng-if="c.search.query">
+    <h2 class="super-search-results__title">Sokeresultater</h2>
+    <p class="super-search-results__summary" ng-if="c.search.total">
+      {{c.search.total}} treff for "<span ng-bind="c.search.query"></span>"
+    </p>
+    <p class="super-search-results__summary" ng-if="!c.search.total">
+      Ingen treff for "<span ng-bind="c.search.query"></span>"
+    </p>
+  </div>
+
+  <div class="alert alert-info" ng-if="!c.search.query">
+    Skriv inn et sok fra forsiden for a vise kunnskapsartikler og bestillinger.
+  </div>
+
+  <div class="alert alert-warning" ng-if="c.search.query && !c.search.total && !c.isLoading">
+    Vi fant ingen publiserte kunnskapsartikler eller bestillinger som matcher soket ditt.
+  </div>
+
+  <div class="super-search-results__loading" ng-if="c.isLoading">
+    Laster resultater...
+  </div>
+
+  <div ng-if="c.search.total">
+    <p class="super-search-results__range">
+      Viser {{c.getStartIndex()}}-{{c.getEndIndex()}} av {{c.search.total}}
+    </p>
+
+    <div class="super-search-results__list">
+      <article class="super-search-results__item" ng-repeat="result in c.search.results track by (result.resultType + ':' + result.sysId)">
+        <h3 class="super-search-results__item-title">
+          <a ng-href="{{::result.url}}" ng-bind="::result.title"></a>
+        </h3>
+        <p class="super-search-results__meta" ng-if="result.resultTypeLabel || result.number || result.kbName || result.catalogName || result.categoryName || result.language">
+          <span ng-if="result.resultTypeLabel" ng-bind="result.resultTypeLabel"></span>
+          <span ng-if="result.number"> | <span ng-bind="result.number"></span></span>
+          <span ng-if="result.kbName"> | <span ng-bind="result.kbName"></span></span>
+          <span ng-if="result.catalogName"> | <span ng-bind="result.catalogName"></span></span>
+          <span ng-if="result.categoryName"> | <span ng-bind="result.categoryName"></span></span>
+          <span ng-if="result.language"> | <span ng-bind="result.language"></span></span>
+        </p>
+        <p class="super-search-results__snippet" ng-if="result.snippet" ng-bind="::result.snippet"></p>
+      </article>
+    </div>
+
+    <nav class="super-search-results__pager" ng-if="c.showPager()">
+      <button
+        type="button"
+        class="btn btn-default"
+        ng-click="c.goToPage(c.search.page - 1)"
+        ng-disabled="c.search.page <= 1 || c.isLoading">
+        Forrige
+      </button>
+      <span class="super-search-results__pager-status">
+        Side {{c.search.page}} av {{c.search.totalPages}}
+      </span>
+      <button
+        type="button"
+        class="btn btn-default"
+        ng-click="c.goToPage(c.search.page + 1)"
+        ng-disabled="!c.search.hasMore || c.isLoading">
+        Neste
+      </button>
+    </nav>
+  </div>
+</div>
