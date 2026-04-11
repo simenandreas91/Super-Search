@@ -1,17 +1,33 @@
 <div class="super-search-widget">
   <form class="super-search-widget__form" ng-submit="c.submitSearch()" novalidate>
-    <label class="super-search-widget__label" for="super-search-input">Kunnskapssok</label>
-    <div class="super-search-widget__controls">
-      <input
-        id="super-search-input"
-        class="form-control super-search-widget__input"
-        type="search"
-        ng-model="c.searchTerm"
-        placeholder="{{::c.data.config.inputPlaceholder}}"
-        autocomplete="off" />
-      <button class="btn btn-primary super-search-widget__button" type="submit">
-        {{::c.data.config.buttonLabel}}
-      </button>
+    <h2 class="super-search-widget__greeting" ng-if="::c.data.greetingName">
+      Hei {{::c.data.greetingName}}, hva leter du etter?
+    </h2>
+    <h2 class="super-search-widget__greeting" ng-if="::!c.data.greetingName">
+      Hei, hva leter du etter?
+    </h2>
+
+    <div class="super-search-widget__surface">
+      <div class="super-search-widget__controls">
+        <div class="super-search-widget__input-wrap">
+          <span class="super-search-widget__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.43 4.44 1.06-1.06-4.44-4.43A6.5 6.5 0 0 0 10.5 4zm0 1.5A5 5 0 1 1 5.5 10.5a5 5 0 0 1 5-5z"></path>
+            </svg>
+          </span>
+          <input
+            id="super-search-input"
+            class="form-control super-search-widget__input"
+            type="search"
+            ng-model="c.searchTerm"
+            aria-label="Sok"
+            placeholder="{{::c.data.config.inputPlaceholder}}"
+            autocomplete="off" />
+        </div>
+        <button class="btn btn-primary super-search-widget__button" type="submit">
+          {{::c.data.config.buttonLabel}}
+        </button>
+      </div>
     </div>
   </form>
 </div>
