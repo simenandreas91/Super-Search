@@ -15,28 +15,86 @@
   </div>
 
   <div class="alert alert-info" ng-if="!c.search.query">
-    Skriv inn et sok fra forsiden for a vise kunnskapsartikler og bestillinger.
+    Skriv inn et sok fra forsiden for a vise kunnskapsartikler, nyheter og bestillinger.
   </div>
 
-  <div class="alert alert-warning" ng-if="c.search.query && !c.search.total && !c.isLoading">
-    Vi fant ingen publiserte kunnskapsartikler eller bestillinger som matcher soket ditt.
+  <div class="alert alert-warning" ng-if="c.search.query && !c.search.total && !c.isLoading && !c.search.filters.all.count">
+    Vi fant ingen publiserte kunnskapsartikler, nyheter eller bestillinger som matcher soket ditt.
+  </div>
+
+  <div class="alert alert-info" ng-if="c.search.query && !c.search.total && !c.isLoading && c.search.filters.all.count">
+    Ingen treff i det valgte filteret. Prove et annet filter for a se flere resultater.
   </div>
 
   <div class="super-search-results__loading" ng-if="c.isLoading">
     Laster resultater...
   </div>
 
-  <div ng-if="c.search.total">
+  <div ng-if="c.search.query && c.search.filters.all.count">
     <div class="super-search-results__range-row">
-      <p class="super-search-results__range">
-        Viser {{c.getStartIndex()}}-{{c.getEndIndex()}} av {{c.search.total}}
-      </p>
+      <div class="super-search-results__toolbar">
+        <p class="super-search-results__range">
+          <span ng-if="c.search.total">Viser {{c.getStartIndex()}}-{{c.getEndIndex()}} av {{c.search.total}}</span>
+          <span ng-if="!c.search.total">0 treff i valgt filter</span>
+        </p>
+        <div class="super-search-results__filters">
+          <button
+            type="button"
+            class="super-search-results__filter"
+            ng-class="{'super-search-results__filter--active': c.isActiveFilter('all')}"
+            ng-click="c.setFilter('all')"
+            ng-disabled="c.isLoading">
+            Alle <span class="super-search-results__filter-count" ng-bind="c.search.filters.all.count"></span>
+          </button>
+          <button
+            type="button"
+            class="super-search-results__filter"
+            ng-class="{'super-search-results__filter--active': c.isActiveFilter('knowledge')}"
+            ng-click="c.setFilter('knowledge')"
+            ng-disabled="c.isLoading">
+            Artikler <span class="super-search-results__filter-count" ng-bind="c.search.filters.knowledge.count"></span>
+          </button>
+          <button
+            type="button"
+            class="super-search-results__filter super-search-results__filter--news"
+            ng-class="{'super-search-results__filter--active': c.isActiveFilter('news')}"
+            ng-click="c.setFilter('news')"
+            ng-disabled="c.isLoading">
+            Nyheter <span class="super-search-results__filter-count" ng-bind="c.search.filters.news.count"></span>
+          </button>
+          <button
+            type="button"
+            class="super-search-results__filter super-search-results__filter--request"
+            ng-class="{'super-search-results__filter--active': c.isActiveFilter('catalog_item')}"
+            ng-click="c.setFilter('catalog_item')"
+            ng-disabled="c.isLoading">
+            Bestillinger og skjemaer <span class="super-search-results__filter-count" ng-bind="c.search.filters.catalog_item.count"></span>
+          </button>
+          <button
+            type="button"
+            class="super-search-results__filter super-search-results__filter--knowledge-base"
+            ng-if="c.search.filters.featured_kb"
+            ng-class="{'super-search-results__filter--active': c.isActiveFilter('featured_kb')}"
+            ng-click="c.setFilter('featured_kb')"
+            ng-disabled="c.isLoading">
+            <span ng-bind="c.search.filters.featured_kb.label"></span>
+            <span class="super-search-results__filter-count" ng-bind="c.search.filters.featured_kb.count"></span>
+          </button>
+        </div>
+      </div>
     </div>
 
-    <div class="super-search-results__list">
-      <article class="super-search-results__item" ng-repeat="result in c.search.results track by (result.resultType + ':' + result.sysId)">
+    <div class="super-search-results__list" ng-if="c.search.total">
+      <article
+        class="super-search-results__item"
+        ng-class="{'super-search-results__item--request': result.isRequestItem, 'super-search-results__item--news': result.isNewsItem}"
+        ng-repeat="result in c.search.results track by (result.resultType + ':' + result.sysId)">
         <div class="super-search-results__item-top">
-          <span class="super-search-results__type-badge" ng-if="result.resultTypeLabel" ng-bind="result.resultTypeLabel"></span>
+          <span
+            class="super-search-results__type-badge"
+            ng-class="{'super-search-results__type-badge--request': result.isRequestItem, 'super-search-results__type-badge--news': result.isNewsItem}"
+            ng-if="result.resultTypeLabel"
+            ng-bind="result.resultTypeLabel"></span>
           <span class="super-search-results__meta-chip" ng-if="result.number" ng-bind="result.number"></span>
         </div>
         <h3 class="super-search-results__item-title">

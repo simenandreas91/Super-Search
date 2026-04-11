@@ -3,13 +3,17 @@ superSearchEngine.prototype = {
     initialize: function() {
         this.KNOWLEDGE_TABLE = 'kb_knowledge';
         this.CATALOG_TABLE = 'sc_cat_item';
+        this.NEWS_TABLE = 'sn_cd_content_base';
         this.CONNECTED_CONTENT_TABLE = 'm2m_connected_content';
+        this.PORTAL_TAXONOMY_TABLE = 'm2m_sp_portal_taxonomy';
         this.DEFAULT_PAGE_SIZE = 10;
         this.DEFAULT_CANDIDATE_LIMIT = 75;
         this.MAX_PAGE_SIZE = 50;
         this.MAX_CANDIDATE_LIMIT = 200;
         this.DEFAULT_ARTICLE_PAGE_ID = 'kb_article';
         this.DEFAULT_CATALOG_ITEM_PAGE_ID = 'sc_cat_item';
+        this.DEFAULT_NEWS_PAGE_ID = 'cd_news_article';
+        this.DEFAULT_NEWS_CONTENT_TYPE_ID = '4880186c53202110a489ddeeff7b129a';
         this.SNIPPET_LENGTH = 180;
     },
 
@@ -21,11 +25,19 @@ superSearchEngine.prototype = {
         var candidateLimit = this._clampInteger(request.candidateLimit, this.DEFAULT_CANDIDATE_LIMIT, 1, this.MAX_CANDIDATE_LIMIT);
         var articlePageId = this._safeString(request.articlePageId) || this.DEFAULT_ARTICLE_PAGE_ID;
         var catalogItemPageId = this._safeString(request.catalogItemPageId) || this.DEFAULT_CATALOG_ITEM_PAGE_ID;
+        var newsPageId = this._safeString(request.newsPageId) || this.DEFAULT_NEWS_PAGE_ID;
+        var newsContentTypeId = this._safeString(request.newsContentTypeId) || this.DEFAULT_NEWS_CONTENT_TYPE_ID;
+        var portalSysId = this._safeString(request.portalSysId);
+        var featuredKnowledgeBaseId = this._safeString(request.featuredKnowledgeBaseId);
+        var featuredKnowledgeBaseLabel = this._cleanQuery(request.featuredKnowledgeBaseLabel);
+        var resultFilter = this._normalizeResultFilter(request.resultFilter);
         var includeBodySearch = this._toBoolean(request.includeBodySearch);
         var requestedPage = this._clampInteger(request.page, 1, 1, 10000);
         var response = {
             query: query,
             normalizedQuery: normalizedQuery,
+            activeFilter: resultFilter,
+            filters: this._buildEmptyFilters(featuredKnowledgeBaseId, featuredKnowledgeBaseLabel),
             page: requestedPage,
             pageSize: pageSize,
             total: 0,
@@ -42,8 +54,10 @@ superSearchEngine.prototype = {
             return response;
         }
 
-        context = this._buildContext(articlePageId, catalogItemPageId);
+        context = this._buildContext(articlePageId, catalogItemPageId, newsPageId, newsContentTypeId, portalSysId, featuredKnowledgeBaseId, featuredKnowledgeBaseLabel);
         scoredCandidates = this._getScoredCandidates(context, query, normalizedQuery, candidateLimit, includeBodySearch);
+        response.filters = this._buildFilterSummary(scoredCandidates, context);
+        scoredCandidates = this._applyResultFilter(scoredCandidates, resultFilter);
         response.total = scoredCandidates.length;
         response.totalPages = response.total > 0 ? Math.ceil(response.total / pageSize) : 0;
 
@@ -64,14 +78,24 @@ superSearchEngine.prototype = {
         return response;
     },
 
-    _buildContext: function(articlePageId, catalogItemPageId) {
+    _buildContext: function(articlePageId, catalogItemPageId, newsPageId, newsContentTypeId, portalSysId, featuredKnowledgeBaseId, featuredKnowledgeBaseLabel) {
         var knowledgeRecord = new GlideRecordSecure(this.KNOWLEDGE_TABLE);
         var catalogRecord = new GlideRecordSecure(this.CATALOG_TABLE);
+        var newsRecord = new GlideRecordSecure(this.NEWS_TABLE);
+        var portalTaxonomyIds = this._getPortalTaxonomyIds(portalSysId);
+        var currentDateTime = new GlideDateTime();
+        var todayValue = currentDateTime.getValue().substring(0, 10);
 
         return {
             articlePageId: articlePageId,
             catalogItemPageId: catalogItemPageId,
-            now: new GlideDateTime().getDisplayValue(),
+            newsPageId: newsPageId,
+            newsContentTypeId: newsContentTypeId,
+            portalSysId: portalSysId,
+            portalTaxonomyIds: portalTaxonomyIds,
+            featuredKnowledgeBaseId: featuredKnowledgeBaseId,
+            featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,
+            todayValue: todayValue,
             knowledgeFields: {
                 number: knowledgeRecord.isValidField('number'),
                 shortDescription: knowledgeRecord.isValidField('short_description'),
@@ -100,17 +124,25 @@ superSearchEngine.prototype = {
                 hiddenInServicePortal: catalogRecord.isValidField('hidden_sp'),
                 visibleInServicePortal: catalogRecord.isValidField('visible_sp'),
                 availability: catalogRecord.isValidField('availability')
+            },
+            newsFields: {
+                title: newsRecord.isValidField('title'),
+                updatedOn: newsRecord.isValidField('sys_updated_on'),
+                active: newsRecord.isValidField('active'),
+                contentType: newsRecord.isValidField('content_type')
             }
         };
     },
 
     _getScoredCandidates: function(context, query, normalizedQuery, candidateLimit, includeBodySearch) {
         var tokens = this._tokenize(normalizedQuery);
-        var knowledgeLimit = this._clampInteger(Math.ceil(candidateLimit * 0.65), candidateLimit, 1, candidateLimit);
-        var catalogLimit = this._clampInteger(candidateLimit, candidateLimit, 1, candidateLimit);
+        var knowledgeLimit = this._clampInteger(Math.ceil(candidateLimit * 0.5), candidateLimit, 1, candidateLimit);
+        var catalogLimit = this._clampInteger(Math.ceil(candidateLimit * 0.3), candidateLimit, 1, candidateLimit);
+        var newsLimit = this._clampInteger(Math.ceil(candidateLimit * 0.25), candidateLimit, 1, candidateLimit);
         var knowledgeCandidates = this._getKnowledgeCandidates(context, query, normalizedQuery, knowledgeLimit, includeBodySearch);
         var catalogCandidates = this._getCatalogCandidates(context, query, normalizedQuery, catalogLimit, includeBodySearch);
-        var mergedCandidates = knowledgeCandidates.concat(catalogCandidates);
+        var newsCandidates = this._getNewsCandidates(context, query, normalizedQuery, newsLimit);
+        var mergedCandidates = knowledgeCandidates.concat(catalogCandidates, newsCandidates);
 
         return this._scoreAndSortCandidates(mergedCandidates, normalizedQuery, tokens);
     },
@@ -138,6 +170,10 @@ superSearchEngine.prototype = {
         var passDefinitions;
         var index;
 
+        if (context.portalTaxonomyIds.length === 0) {
+            return candidates;
+        }
+
         passDefinitions = this._buildCatalogPassDefinitions(context, query, includeBodySearch);
 
         for (index = 0; index < passDefinitions.length; index++) {
@@ -148,7 +184,24 @@ superSearchEngine.prototype = {
             this._collectCatalogCandidatesForPass(context, passDefinitions[index], candidateLimit, candidateMap, candidates);
         }
 
-        return this._filterConnectedCatalogCandidates(candidates);
+        return this._filterConnectedCatalogCandidates(candidates, context);
+    },
+
+    _getNewsCandidates: function(context, query, normalizedQuery, candidateLimit) {
+        var candidateMap = {};
+        var candidates = [];
+        var passDefinitions = this._buildNewsPassDefinitions(context, query);
+        var index;
+
+        for (index = 0; index < passDefinitions.length; index++) {
+            if (candidates.length >= candidateLimit) {
+                break;
+            }
+
+            this._collectNewsCandidatesForPass(context, passDefinitions[index], candidateLimit, candidateMap, candidates);
+        }
+
+        return candidates;
     },
 
     _buildKnowledgePassDefinitions: function(context, query, includeBodySearch) {
@@ -253,6 +306,30 @@ superSearchEngine.prototype = {
         return passes;
     },
 
+    _buildNewsPassDefinitions: function(context, query) {
+        var passes = [];
+
+        if (context.newsFields.title) {
+            passes.push({
+                field: 'title',
+                operator: '=',
+                value: query
+            });
+            passes.push({
+                field: 'title',
+                operator: 'STARTSWITH',
+                value: query
+            });
+            passes.push({
+                field: 'title',
+                operator: 'CONTAINS',
+                value: query
+            });
+        }
+
+        return passes;
+    },
+
     _collectKnowledgeCandidatesForPass: function(context, passDefinition, candidateLimit, candidateMap, candidates) {
         var record = new GlideRecordSecure(this.KNOWLEDGE_TABLE);
         var remainingCapacity = candidateLimit - candidates.length;
@@ -299,6 +376,29 @@ superSearchEngine.prototype = {
         }
     },
 
+    _collectNewsCandidatesForPass: function(context, passDefinition, candidateLimit, candidateMap, candidates) {
+        var record = new GlideRecordSecure(this.NEWS_TABLE);
+        var remainingCapacity = candidateLimit - candidates.length;
+
+        if (remainingCapacity <= 0) {
+            return;
+        }
+
+        this._applyNewsBaseFilters(record, context);
+        this._applyPassDefinition(record, passDefinition);
+
+        if (context.newsFields.updatedOn) {
+            record.orderByDesc('sys_updated_on');
+        }
+
+        record.setLimit(remainingCapacity);
+        record.query();
+
+        while (record.next() && candidates.length < candidateLimit) {
+            this._storeNewsCandidate(record, context, candidateMap, candidates);
+        }
+    },
+
     _applyPassDefinition: function(record, passDefinition) {
         var condition;
         var index;
@@ -333,12 +433,12 @@ superSearchEngine.prototype = {
         }
 
         if (context.knowledgeFields.published) {
-            record.addQuery('published', '<=', context.now);
+            record.addQuery('published', '<=', context.todayValue);
         }
 
         if (context.knowledgeFields.validTo) {
             validToQuery = record.addQuery('valid_to', '');
-            validToQuery.addOrCondition('valid_to', '>=', context.now);
+            validToQuery.addOrCondition('valid_to', '>=', context.todayValue);
         }
     },
 
@@ -353,6 +453,16 @@ superSearchEngine.prototype = {
 
         if (context.catalogFields.visibleInServicePortal) {
             record.addQuery('visible_sp', true);
+        }
+    },
+
+    _applyNewsBaseFilters: function(record, context) {
+        if (context.newsFields.active) {
+            record.addActiveQuery();
+        }
+
+        if (context.newsFields.contentType && context.newsContentTypeId) {
+            record.addQuery('content_type', context.newsContentTypeId);
         }
     },
 
@@ -381,12 +491,20 @@ superSearchEngine.prototype = {
             url: this._buildKnowledgeUrl(context.articlePageId, sysId)
         };
 
+        candidate.isFeaturedKnowledgeBase = !!context.featuredKnowledgeBaseId &&
+            context.knowledgeFields.knowledgeBase &&
+            record.getValue('kb_knowledge_base') === context.featuredKnowledgeBaseId;
+
+        if (candidate.isFeaturedKnowledgeBase && context.featuredKnowledgeBaseLabel) {
+            candidate.kbName = context.featuredKnowledgeBaseLabel;
+        }
+
         candidateMap[candidateKey] = candidate;
         candidates.push(candidate);
     },
 
-    _filterConnectedCatalogCandidates: function(candidates) {
-        var connectedIds = this._getConnectedCatalogItemIdMap(candidates);
+    _filterConnectedCatalogCandidates: function(candidates, context) {
+        var connectedIds = this._getConnectedCatalogItemIdMap(candidates, context);
         var filteredCandidates = [];
         var index;
 
@@ -423,6 +541,36 @@ superSearchEngine.prototype = {
             updatedOn: context.catalogFields.updatedOn ? this._safeString(record.getValue('sys_updated_on')) : '',
             catalogName: context.catalogFields.catalog ? record.getDisplayValue('sc_catalogs') : '',
             url: this._buildCatalogUrl(context.catalogItemPageId, sysId)
+        };
+
+        candidateMap[candidateKey] = candidate;
+        candidates.push(candidate);
+    },
+
+    _storeNewsCandidate: function(record, context, candidateMap, candidates) {
+        var sysId = record.getUniqueValue();
+        var candidateKey = 'news:' + sysId;
+        var candidate;
+
+        if (!sysId || candidateMap[candidateKey]) {
+            return;
+        }
+
+        candidate = {
+            resultKey: 'news:' + sysId,
+            resultType: 'news',
+            resultTypeLabel: 'Nyhet',
+            sysId: sysId,
+            number: '',
+            title: context.newsFields.title ? this._safeString(record.getValue('title')) : '',
+            metaText: '',
+            bodyText: '',
+            kbName: '',
+            categoryName: '',
+            language: '',
+            updatedOn: context.newsFields.updatedOn ? this._safeString(record.getValue('sys_updated_on')) : '',
+            catalogName: '',
+            url: this._buildNewsUrl(context.newsPageId, sysId)
         };
 
         candidateMap[candidateKey] = candidate;
@@ -476,6 +624,8 @@ superSearchEngine.prototype = {
 
             if (candidate.resultType === 'knowledge') {
                 candidate.score += 20;
+            } else if (candidate.resultType === 'news') {
+                candidate.score += 10;
             }
 
             if (candidate.score > 0) {
@@ -562,6 +712,9 @@ superSearchEngine.prototype = {
                 sysId: candidate.sysId,
                 resultType: candidate.resultType,
                 resultTypeLabel: candidate.resultTypeLabel,
+                isRequestItem: candidate.resultType === 'catalog_item',
+                isNewsItem: candidate.resultType === 'news',
+                isFeaturedKnowledgeBase: candidate.isFeaturedKnowledgeBase === true,
                 number: candidate.number,
                 title: candidate.title,
                 snippet: this._buildSnippet(candidate, normalizedQuery),
@@ -649,24 +802,31 @@ superSearchEngine.prototype = {
         return '?id=' + encodeURIComponent(catalogItemPageId) + '&sys_id=' + encodeURIComponent(sysId);
     },
 
-    _getConnectedCatalogItemIdMap: function(candidates) {
+    _buildNewsUrl: function(newsPageId, sysId) {
+        return '?id=' + encodeURIComponent(newsPageId) + '&sys_id=' + encodeURIComponent(sysId);
+    },
+
+    _getConnectedCatalogItemIdMap: function(candidates, context) {
         var candidateIds = [];
         var connectedItemMap = {};
         var connectedContent = new GlideRecordSecure(this.CONNECTED_CONTENT_TABLE);
         var candidateIdString;
+        var taxonomyIdString;
         var index;
 
         for (index = 0; index < candidates.length; index++) {
             candidateIds.push(candidates[index].sysId);
         }
 
-        if (candidateIds.length === 0 || !connectedContent.isValid()) {
+        if (candidateIds.length === 0 || context.portalTaxonomyIds.length === 0 || !connectedContent.isValid()) {
             return connectedItemMap;
         }
 
         candidateIdString = candidateIds.join(',');
+        taxonomyIdString = context.portalTaxonomyIds.join(',');
         connectedContent.addQuery('catalog_item', 'IN', candidateIdString);
         connectedContent.addNotNullQuery('topic');
+        connectedContent.addQuery('topic.taxonomy', 'IN', taxonomyIdString);
         connectedContent.orderByDesc('popularity');
         connectedContent.query();
 
@@ -677,6 +837,39 @@ superSearchEngine.prototype = {
         return connectedItemMap;
     },
 
+    _getPortalTaxonomyIds: function(portalSysId) {
+        var taxonomyIds = [];
+        var uniqueTaxonomyIds = {};
+        var portalTaxonomy = new GlideRecordSecure(this.PORTAL_TAXONOMY_TABLE);
+        var taxonomyId;
+
+        if (!portalSysId || !portalTaxonomy.isValid()) {
+            return taxonomyIds;
+        }
+
+        if (portalTaxonomy.isValidField('active')) {
+            portalTaxonomy.addActiveQuery();
+        }
+
+        portalTaxonomy.addQuery('sp_portal', portalSysId);
+        portalTaxonomy.addNotNullQuery('taxonomy');
+        portalTaxonomy.orderBy('order');
+        portalTaxonomy.query();
+
+        while (portalTaxonomy.next()) {
+            taxonomyId = portalTaxonomy.getValue('taxonomy');
+
+            if (!taxonomyId || uniqueTaxonomyIds[taxonomyId]) {
+                continue;
+            }
+
+            uniqueTaxonomyIds[taxonomyId] = true;
+            taxonomyIds.push(taxonomyId);
+        }
+
+        return taxonomyIds;
+    },
+
     _getCatalogTypeLabel: function(record, context) {
         var className = context.catalogFields.className ? record.getValue('sys_class_name') : '';
 
@@ -685,6 +878,93 @@ superSearchEngine.prototype = {
         }
 
         return 'Bestilling';
+    },
+
+    _normalizeResultFilter: function(value) {
+        var normalizedValue = this._normalizeQuery(value);
+
+        if (normalizedValue === 'knowledge' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'featured_kb' || normalizedValue === 'all') {
+            return normalizedValue;
+        }
+
+        return 'all';
+    },
+
+    _applyResultFilter: function(candidates, resultFilter) {
+        var filteredCandidates = [];
+        var index;
+
+        if (resultFilter === 'all') {
+            return candidates;
+        }
+
+        for (index = 0; index < candidates.length; index++) {
+            if (resultFilter === 'featured_kb' && candidates[index].isFeaturedKnowledgeBase) {
+                filteredCandidates.push(candidates[index]);
+            } else if (candidates[index].resultType === resultFilter) {
+                filteredCandidates.push(candidates[index]);
+            }
+        }
+
+        return filteredCandidates;
+    },
+
+    _buildEmptyFilters: function(featuredKnowledgeBaseId, featuredKnowledgeBaseLabel) {
+        var filters = {
+            all: {
+                id: 'all',
+                label: 'Alle',
+                count: 0
+            },
+            knowledge: {
+                id: 'knowledge',
+                label: 'Artikler',
+                count: 0
+            },
+            news: {
+                id: 'news',
+                label: 'Nyheter',
+                count: 0
+            },
+            catalog_item: {
+                id: 'catalog_item',
+                label: 'Bestillinger og skjemaer',
+                count: 0
+            }
+        };
+
+        if (featuredKnowledgeBaseId && featuredKnowledgeBaseLabel) {
+            filters.featured_kb = {
+                id: 'featured_kb',
+                label: featuredKnowledgeBaseLabel,
+                count: 0
+            };
+        }
+
+        return filters;
+    },
+
+    _buildFilterSummary: function(candidates, context) {
+        var filters;
+        var index;
+        var resultType;
+
+        filters = this._buildEmptyFilters(context.featuredKnowledgeBaseId, context.featuredKnowledgeBaseLabel);
+        filters.all.count = candidates.length;
+
+        for (index = 0; index < candidates.length; index++) {
+            resultType = candidates[index].resultType;
+
+            if (filters[resultType]) {
+                filters[resultType].count += 1;
+            }
+
+            if (filters.featured_kb && candidates[index].isFeaturedKnowledgeBase) {
+                filters.featured_kb.count += 1;
+            }
+        }
+
+        return filters;
     },
 
     _compareCandidates: function(leftCandidate, rightCandidate) {
@@ -727,7 +1007,7 @@ superSearchEngine.prototype = {
 
     _stripHtml: function(value) {
         return this._safeString(value)
-            .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+            .replace(/&lt;script&gt;/gi, ' ')
             .replace(/<style[\s\S]*?<\/style>/gi, ' ')
             .replace(/<[^>]+>/g, ' ')
             .replace(/&nbsp;/gi, ' ')

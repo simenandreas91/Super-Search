@@ -6,6 +6,13 @@
   var includeBodySearch = parseBooleanOption(options.include_body_search, true);
   var articlePageId = options.article_page_id || 'kb_article';
   var catalogItemPageId = options.catalog_item_page_id || 'sc_cat_item';
+  var newsPageId = options.news_page_id || 'cd_news_article';
+  var newsContentTypeId = options.news_content_type_id || '4880186c53202110a489ddeeff7b129a';
+  var featuredKnowledgeBaseId = options.featured_knowledge_base_id || 'bb0370019f22120047a2d126c42e7073';
+  var featuredKnowledgeBaseLabel = options.featured_knowledge_base_label || 'Human Resources General Knowledge';
+  var portalRecord = $sp.getPortalRecord();
+  var portalSysId = options.portal_sys_id || (portalRecord ? portalRecord.getUniqueValue() : '');
+  var resultFilter = 'all';
   var searchEngine = new x_1122545_super_0.superSearchEngine();
 
   if (input && typeof input.query !== 'undefined') {
@@ -20,10 +27,22 @@
     page = parseIntegerOption($sp.getParameter('page'), 1);
   }
 
+  if (input && typeof input.resultFilter !== 'undefined') {
+    resultFilter = normalizeFilter(input.resultFilter);
+  } else {
+    resultFilter = normalizeFilter($sp.getParameter('filter'));
+  }
+
   data.config = {
     pageSize: pageSize,
     articlePageId: articlePageId,
-    catalogItemPageId: catalogItemPageId
+    catalogItemPageId: catalogItemPageId,
+    newsPageId: newsPageId,
+    newsContentTypeId: newsContentTypeId,
+    portalSysId: portalSysId,
+    featuredKnowledgeBaseId: featuredKnowledgeBaseId,
+    featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,
+    resultFilter: resultFilter
   };
 
   data.search = searchEngine.searchKnowledge({
@@ -33,7 +52,13 @@
     candidateLimit: candidateLimit,
     includeBodySearch: includeBodySearch,
     articlePageId: articlePageId,
-    catalogItemPageId: catalogItemPageId
+    catalogItemPageId: catalogItemPageId,
+    newsPageId: newsPageId,
+    newsContentTypeId: newsContentTypeId,
+    portalSysId: portalSysId,
+    featuredKnowledgeBaseId: featuredKnowledgeBaseId,
+    featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,
+    resultFilter: resultFilter
   });
 
   function parseIntegerOption(value, defaultValue) {
@@ -52,5 +77,15 @@
     }
 
     return String(value) === 'true';
+  }
+
+  function normalizeFilter(value) {
+    var normalizedValue = String(value || 'all').toLowerCase();
+
+    if (normalizedValue === 'knowledge' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'featured_kb') {
+      return normalizedValue;
+    }
+
+    return 'all';
   }
 })();

@@ -38,5 +38,45 @@
     "default_value": "sc_cat_item",
     "section": "Behavior",
     "hint": "Portal page ID used to open a catalog item or record producer from the results list."
+  },
+  {
+    "name": "news_page_id",
+    "label": "News page ID",
+    "type": "string",
+    "default_value": "cd_news_article",
+    "section": "Behavior",
+    "hint": "Portal page ID used to open a news article from the results list."
+  },
+  {
+    "name": "news_content_type_id",
+    "label": "News content type sys_id",
+    "type": "string",
+    "default_value": "4880186c53202110a489ddeeff7b129a",
+    "section": "Behavior",
+    "hint": "Content type sys_id used to limit news search results in sn_cd_content_base."
+  },
+  {
+    "name": "portal_sys_id",
+    "label": "Portal sys_id override",
+    "type": "string",
+    "default_value": "",
+    "section": "Behavior",
+    "hint": "Optional override. Leave empty to use the current portal context automatically."
+  },
+  {
+    "name": "featured_knowledge_base_id",
+    "label": "Featured knowledge base sys_id",
+    "type": "string",
+    "default_value": "bb0370019f22120047a2d126c42e7073",
+    "section": "Behavior",
+    "hint": "Knowledge base sys_id used for the dedicated knowledge base filter. Change this in the target instance."
+  },
+  {
+    "name": "featured_knowledge_base_label",
+    "label": "Featured knowledge base label",
+    "type": "string",
+    "default_value": "Human Resources General Knowledge",
+    "section": "Behavior",
+    "hint": "User-facing label for the dedicated knowledge base filter."
   }
 ]

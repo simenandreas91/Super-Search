@@ -12,7 +12,7 @@
           "records": {
             "f6ae29bbc34083106b68770d05013182": {
               "name": "superSearchEngine",
-              "updated": "2026-04-11 12:59:41",
+              "updated": "2026-04-11 14:04:02",
               "codeFields": {
                 "script": {
                   "label": "Script",
@@ -32,7 +32,7 @@
           "records": {
             "3b9d29f7c34083106b68770d0501314c": {
               "name": "Super search widget",
-              "updated": "2026-04-11 12:50:01",
+              "updated": "2026-04-11 13:58:10",
               "codeFields": {
                 "template": {
                   "label": "Body HTML template",
@@ -70,7 +70,7 @@
             },
             "419e6d7bc34083106b68770d05013136": {
               "name": "Search results",
-              "updated": "2026-04-11 12:58:01",
+              "updated": "2026-04-11 14:06:44",
               "codeFields": {
                 "template": {
                   "label": "Body HTML template",

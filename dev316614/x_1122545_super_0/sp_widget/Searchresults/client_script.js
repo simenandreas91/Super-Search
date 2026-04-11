@@ -12,7 +12,8 @@ api.controller = function($location) {
     c.isLoading = true;
     c.server.get({
       query: c.search.query,
-      page: page
+      page: page,
+      resultFilter: c.search.activeFilter
     }).then(function(response) {
       c.search = response.data.search;
       c.updateUrl();
@@ -24,6 +25,29 @@ api.controller = function($location) {
 
   c.showPager = function() {
     return c.search && c.search.totalPages > 1;
+  };
+
+  c.setFilter = function(filterId) {
+    if (c.isLoading || !c.search || !filterId || filterId === c.search.activeFilter) {
+      return;
+    }
+
+    c.isLoading = true;
+    c.server.get({
+      query: c.search.query,
+      page: 1,
+      resultFilter: filterId
+    }).then(function(response) {
+      c.search = response.data.search;
+      c.updateUrl();
+      c.isLoading = false;
+    }, function() {
+      c.isLoading = false;
+    });
+  };
+
+  c.isActiveFilter = function(filterId) {
+    return c.search && c.search.activeFilter === filterId;
   };
 
   c.getStartIndex = function() {
@@ -46,6 +70,7 @@ api.controller = function($location) {
     if (!c.search || !c.search.query) {
       $location.search('q', null);
       $location.search('page', null);
+      $location.search('filter', null);
       return;
     }
 
@@ -55,6 +80,12 @@ api.controller = function($location) {
       $location.search('page', c.search.page);
     } else {
       $location.search('page', null);
+    }
+
+    if (c.search.activeFilter && c.search.activeFilter !== 'all') {
+      $location.search('filter', c.search.activeFilter);
+    } else {
+      $location.search('filter', null);
     }
   };
 };
