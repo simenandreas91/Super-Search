@@ -97,9 +97,24 @@
             ng-bind="result.resultTypeLabel"></span>
           <span class="super-search-results__meta-chip" ng-if="result.number" ng-bind="result.number"></span>
         </div>
-        <h3 class="super-search-results__item-title">
-          <a ng-href="{{::result.url}}" ng-bind="::result.title"></a>
-        </h3>
+        <div class="super-search-results__title-row">
+          <span
+            class="super-search-results__icon"
+            ng-class="{
+              'super-search-results__icon--knowledge': result.iconKey === 'knowledge',
+              'super-search-results__icon--news': result.iconKey === 'news',
+              'super-search-results__icon--request': result.iconKey === 'catalog_item',
+              'super-search-results__icon--featured-kb': result.iconKey === 'featured_kb'
+            }"
+            ng-if="result.iconClass"
+            ng-attr-title="{{::result.iconLabel}}"
+            aria-hidden="true">
+            <i class="fa" ng-class="result.iconClass"></i>
+          </span>
+          <h3 class="super-search-results__item-title">
+            <a ng-href="{{::result.url}}" ng-bind="::result.title"></a>
+          </h3>
+        </div>
         <div class="super-search-results__meta" ng-if="result.kbName || result.catalogName || result.categoryName || result.language">
           <span class="super-search-results__meta-chip" ng-if="result.kbName" ng-bind="result.kbName"></span>
           <span class="super-search-results__meta-chip" ng-if="result.catalogName" ng-bind="result.catalogName"></span>

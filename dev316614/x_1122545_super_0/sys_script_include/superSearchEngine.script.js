@@ -705,9 +705,11 @@ superSearchEngine.prototype = {
         var results = [];
         var index;
         var candidate;
+        var iconInfo;
 
         for (index = 0; index < candidates.length; index++) {
             candidate = candidates[index];
+            iconInfo = this._getResultIconInfo(candidate);
             results.push({
                 sysId: candidate.sysId,
                 resultType: candidate.resultType,
@@ -715,6 +717,9 @@ superSearchEngine.prototype = {
                 isRequestItem: candidate.resultType === 'catalog_item',
                 isNewsItem: candidate.resultType === 'news',
                 isFeaturedKnowledgeBase: candidate.isFeaturedKnowledgeBase === true,
+                iconKey: iconInfo.key,
+                iconClass: iconInfo.className,
+                iconLabel: iconInfo.label,
                 number: candidate.number,
                 title: candidate.title,
                 snippet: this._buildSnippet(candidate, normalizedQuery),
@@ -727,6 +732,38 @@ superSearchEngine.prototype = {
         }
 
         return results;
+    },
+
+    _getResultIconInfo: function(candidate) {
+        if (candidate.isFeaturedKnowledgeBase) {
+            return {
+                key: 'featured_kb',
+                className: 'fa-gavel',
+                label: 'Utvalgt kunnskapsbase'
+            };
+        }
+
+        if (candidate.resultType === 'news') {
+            return {
+                key: 'news',
+                className: 'fa-newspaper-o',
+                label: 'Nyhet'
+            };
+        }
+
+        if (candidate.resultType === 'catalog_item') {
+            return {
+                key: 'catalog_item',
+                className: 'fa-clipboard',
+                label: candidate.resultTypeLabel || 'Bestilling'
+            };
+        }
+
+        return {
+            key: 'knowledge',
+            className: 'fa-book',
+            label: 'Kunnskapsartikkel'
+        };
     },
 
     _buildSnippet: function(candidate, normalizedQuery) {
