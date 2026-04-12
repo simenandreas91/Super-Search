@@ -22,5 +22,13 @@
     "default_value": "Sok",
     "section": "Labels",
     "hint": "Label used for the search submit button."
+  },
+  {
+    "name": "compact_mode",
+    "label": "Compact mode",
+    "type": "boolean",
+    "default_value": "false",
+    "section": "Behavior",
+    "hint": "Render a compact search input without the greeting, intended for header/navigation use."
   }
 ]

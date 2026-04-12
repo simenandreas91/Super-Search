@@ -1,4 +1,4 @@
-api.controller = function($window) {
+api.controller = function($window, $scope, $location) {
   var c = this;
 
   c.searchTerm = c.data.initialQuery || '';
@@ -16,4 +16,8 @@ api.controller = function($window) {
   c.normalizeTerm = function(value) {
     return (value || '').replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
   };
+
+  $scope.$on('$locationChangeSuccess', function() {
+    c.searchTerm = c.normalizeTerm($location.search().q || '');
+  });
 };

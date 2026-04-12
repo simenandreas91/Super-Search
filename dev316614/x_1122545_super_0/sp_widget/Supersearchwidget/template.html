@@ -1,9 +1,9 @@
-<div class="super-search-widget">
+<div class="super-search-widget" ng-class="{'super-search-widget--compact': c.data.config.compactMode}">
   <form class="super-search-widget__form" ng-submit="c.submitSearch()" novalidate>
-    <h2 class="super-search-widget__greeting" ng-if="::c.data.greetingName">
+    <h2 class="super-search-widget__greeting" ng-if="::(!c.data.config.compactMode && c.data.greetingName)">
       Hei {{::c.data.greetingName}}, hva leter du etter?
     </h2>
-    <h2 class="super-search-widget__greeting" ng-if="::!c.data.greetingName">
+    <h2 class="super-search-widget__greeting" ng-if="::(!c.data.config.compactMode && !c.data.greetingName)">
       Hei, hva leter du etter?
     </h2>
 
