@@ -294,6 +294,15 @@
   text-decoration: underline;
 }
 
+.super-search-results__item-title mark,
+.super-search-results__snippet mark {
+  background: #fff1bf;
+  border-radius: 4px;
+  color: inherit;
+  font-weight: 700;
+  padding: 0 2px;
+}
+
 .super-search-results__meta {
   display: flex;
   flex-wrap: wrap;

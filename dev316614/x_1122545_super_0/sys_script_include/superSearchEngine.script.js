@@ -93,7 +93,7 @@ superSearchEngine.prototype = {
         startIndex = (response.page - 1) * response.pageSize;
         pagedCandidates = scoredCandidates.slice(startIndex, startIndex + response.pageSize);
         response.hasMore = response.page < response.totalPages;
-        response.results = this._shapeResults(pagedCandidates, queryProfile.primaryTerm.normalizedValue, context);
+        response.results = this._shapeResults(pagedCandidates, queryProfile, context);
 
         return response;
     },
@@ -1011,15 +1011,18 @@ superSearchEngine.prototype = {
         return score;
     },
 
-    _shapeResults: function(candidates, normalizedQuery, context) {
+    _shapeResults: function(candidates, queryProfile, context) {
         var results = [];
         var index;
         var candidate;
         var iconInfo;
+        var highlightTerms = this._buildHighlightTerms(queryProfile);
+        var snippet;
 
         for (index = 0; index < candidates.length; index++) {
             candidate = candidates[index];
             iconInfo = this._getResultIconInfo(candidate);
+            snippet = this._buildSnippet(candidate, highlightTerms);
             results.push({
                 sysId: candidate.sysId,
                 resultType: candidate.resultType,
@@ -1032,7 +1035,9 @@ superSearchEngine.prototype = {
                 iconLabel: iconInfo.label,
                 number: candidate.number,
                 title: candidate.title,
-                snippet: this._buildSnippet(candidate, normalizedQuery),
+                titleHtml: this._highlightText(candidate.title, highlightTerms),
+                snippet: snippet,
+                snippetHtml: this._highlightText(snippet, highlightTerms),
                 kbName: candidate.kbName,
                 catalogName: candidate.catalogName || '',
                 categoryName: candidate.categoryName,
@@ -1076,18 +1081,18 @@ superSearchEngine.prototype = {
         };
     },
 
-    _buildSnippet: function(candidate, normalizedQuery) {
+    _buildSnippet: function(candidate, highlightTerms) {
         var bodyText = this._stripHtml(candidate.bodyText);
         var metadataText = this._stripHtml(candidate.metaText);
-        var normalizedBody = this._normalizeQuery(bodyText);
-        var normalizedMetadata = this._normalizeQuery(metadataText);
+        var bodyMatch = this._findFirstHighlightMatch(bodyText, highlightTerms);
+        var metadataMatch = this._findFirstHighlightMatch(metadataText, highlightTerms);
 
-        if (bodyText && normalizedBody.indexOf(normalizedQuery) > -1) {
-            return this._extractSnippet(bodyText, normalizedQuery, this.SNIPPET_LENGTH);
+        if (bodyText && bodyMatch) {
+            return this._extractSnippet(bodyText, bodyMatch.start, bodyMatch.end, this.SNIPPET_LENGTH);
         }
 
-        if (metadataText && normalizedMetadata.indexOf(normalizedQuery) > -1) {
-            return this._extractSnippet(metadataText, normalizedQuery, this.SNIPPET_LENGTH);
+        if (metadataText && metadataMatch) {
+            return this._extractSnippet(metadataText, metadataMatch.start, metadataMatch.end, this.SNIPPET_LENGTH);
         }
 
         if (bodyText) {
@@ -1101,9 +1106,7 @@ superSearchEngine.prototype = {
         return this._truncateText(candidate.title, this.SNIPPET_LENGTH);
     },
 
-    _extractSnippet: function(text, normalizedQuery, length) {
-        var normalizedText = this._normalizeQuery(text);
-        var matchIndex = normalizedText.indexOf(normalizedQuery);
+    _extractSnippet: function(text, matchStart, matchEnd, length) {
         var startIndex;
         var endIndex;
         var snippet;
@@ -1112,11 +1115,11 @@ superSearchEngine.prototype = {
             return '';
         }
 
-        if (matchIndex < 0) {
+        if (typeof matchStart !== 'number' || typeof matchEnd !== 'number' || matchStart < 0 || matchEnd <= matchStart) {
             return this._truncateText(text, length);
         }
 
-        startIndex = Math.max(matchIndex - Math.floor(length / 3), 0);
+        startIndex = Math.max(matchStart - Math.floor(length / 3), 0);
         endIndex = Math.min(startIndex + length, text.length);
         snippet = text.substring(startIndex, endIndex);
 
@@ -1129,6 +1132,162 @@ superSearchEngine.prototype = {
         }
 
         return snippet;
+    },
+
+    _buildHighlightTerms: function(queryProfile) {
+        var terms = [];
+        var uniqueTerms = {};
+        var searchTerms = queryProfile && queryProfile.searchTerms ? queryProfile.searchTerms : [];
+        var searchTerm;
+        var tokenIndex;
+        var index;
+
+        for (index = 0; index < searchTerms.length; index++) {
+            searchTerm = searchTerms[index];
+
+            if (!searchTerm) {
+                continue;
+            }
+
+            this._appendHighlightTerm(terms, uniqueTerms, searchTerm.value);
+
+            for (tokenIndex = 0; searchTerm.tokens && tokenIndex < searchTerm.tokens.length; tokenIndex++) {
+                if (searchTerm.tokens[tokenIndex] && searchTerm.tokens[tokenIndex].length > 1) {
+                    this._appendHighlightTerm(terms, uniqueTerms, searchTerm.tokens[tokenIndex]);
+                }
+            }
+        }
+
+        terms.sort(function(leftTerm, rightTerm) {
+            return rightTerm.length - leftTerm.length;
+        });
+
+        return terms;
+    },
+
+    _appendHighlightTerm: function(terms, uniqueTerms, value) {
+        var cleanValue = this._cleanQuery(value);
+        var normalizedValue = this._normalizeQuery(cleanValue);
+
+        if (!normalizedValue || uniqueTerms[normalizedValue]) {
+            return;
+        }
+
+        uniqueTerms[normalizedValue] = true;
+        terms.push(cleanValue);
+    },
+
+    _highlightText: function(text, highlightTerms) {
+        var safeText = this._safeString(text);
+        var matches = this._collectHighlightMatches(safeText, highlightTerms);
+        var highlightedText = '';
+        var currentIndex = 0;
+        var matchIndex;
+        var match;
+
+        if (!safeText) {
+            return '';
+        }
+
+        if (matches.length === 0) {
+            return this._escapeHtml(safeText);
+        }
+
+        for (matchIndex = 0; matchIndex < matches.length; matchIndex++) {
+            match = matches[matchIndex];
+            highlightedText += this._escapeHtml(safeText.substring(currentIndex, match.start));
+            highlightedText += '<mark>' +
+                this._escapeHtml(safeText.substring(match.start, match.end)) +
+                '</mark>';
+            currentIndex = match.end;
+        }
+
+        highlightedText += this._escapeHtml(safeText.substring(currentIndex));
+
+        return highlightedText;
+    },
+
+    _findFirstHighlightMatch: function(text, highlightTerms) {
+        var matches = this._collectHighlightMatches(text, highlightTerms);
+
+        return matches.length ? matches[0] : null;
+    },
+
+    _collectHighlightMatches: function(text, highlightTerms) {
+        var sourceText = this._safeString(text);
+        var normalizedText = sourceText.toLowerCase();
+        var matches = [];
+        var matchCandidates = [];
+        var highlightTerm;
+        var normalizedTerm;
+        var searchIndex;
+        var index;
+
+        if (!sourceText || !highlightTerms || highlightTerms.length === 0) {
+            return matches;
+        }
+
+        for (index = 0; index < highlightTerms.length; index++) {
+            highlightTerm = this._safeString(highlightTerms[index]);
+            normalizedTerm = highlightTerm.toLowerCase();
+
+            if (!normalizedTerm) {
+                continue;
+            }
+
+            searchIndex = normalizedText.indexOf(normalizedTerm);
+
+            while (searchIndex > -1) {
+                if (this._isValidHighlightBoundary(sourceText, searchIndex, searchIndex + highlightTerm.length, highlightTerm)) {
+                    matchCandidates.push({
+                        start: searchIndex,
+                        end: searchIndex + highlightTerm.length,
+                        length: highlightTerm.length
+                    });
+                }
+
+                searchIndex = normalizedText.indexOf(normalizedTerm, searchIndex + normalizedTerm.length);
+            }
+        }
+
+        matchCandidates.sort(function(leftMatch, rightMatch) {
+            if (leftMatch.start !== rightMatch.start) {
+                return leftMatch.start - rightMatch.start;
+            }
+
+            return rightMatch.length - leftMatch.length;
+        });
+
+        for (index = 0; index < matchCandidates.length; index++) {
+            if (matches.length && matchCandidates[index].start < matches[matches.length - 1].end) {
+                continue;
+            }
+
+            matches.push(matchCandidates[index]);
+        }
+
+        return matches;
+    },
+
+    _isValidHighlightBoundary: function(text, startIndex, endIndex, term) {
+        var previousCharacter = startIndex > 0 ? text.charAt(startIndex - 1) : '';
+        var nextCharacter = endIndex < text.length ? text.charAt(endIndex) : '';
+        var firstTermCharacter = term ? term.charAt(0) : '';
+        var lastTermCharacter = term ? term.charAt(term.length - 1) : '';
+
+        if (this._isWordCharacter(firstTermCharacter) && this._isWordCharacter(previousCharacter)) {
+            return false;
+        }
+
+        if (this._isWordCharacter(lastTermCharacter) && this._isWordCharacter(nextCharacter)) {
+            return false;
+        }
+
+        return true;
+    },
+
+    _isWordCharacter: function(character) {
+        return /[0-9A-Za-z\u00C0-\u017F_]/.test(character || '');
     },
 
     _truncateText: function(text, length) {
@@ -1365,6 +1524,15 @@ superSearchEngine.prototype = {
             .replace(/&gt;/gi, '>')
             .replace(/\s+/g, ' ')
             .replace(/^\s+|\s+$/g, '');
+    },
+
+    _escapeHtml: function(value) {
+        return this._safeString(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     },
 
     _safeString: function(value) {

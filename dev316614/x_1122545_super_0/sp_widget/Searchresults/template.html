@@ -19,7 +19,7 @@
   </div>
 
   <div class="alert alert-warning" ng-if="c.search.query && !c.search.total && !c.isLoading && !c.search.filters.all.count">
-    Vi fant ingen publiserte kunnskapsartikler, nyheter eller bestillinger som matcher soket ditt.
+    Vi fant ingen publiserte kunnskapsartikler, nyheter eller bestillinger som matcher søket ditt.
   </div>
 
   <div class="alert alert-info" ng-if="c.search.query && !c.search.total && !c.isLoading && c.search.filters.all.count">
@@ -117,13 +117,13 @@
                 <i class="fa" ng-class="result.iconClass"></i>
               </span>
               <h3 class="super-search-results__item-title">
-                <a ng-href="{{::result.url}}" ng-bind="::result.title"></a>
+                <a ng-href="{{::result.url}}" ng-bind-html="::result.titleHtml"></a>
               </h3>
             </div>
             <div class="super-search-results__meta" ng-if="result.catalogName">
               <span class="super-search-results__meta-chip" ng-if="result.catalogName" ng-bind="result.catalogName"></span>
             </div>
-            <p class="super-search-results__snippet" ng-if="result.snippet" ng-bind="::result.snippet"></p>
+            <p class="super-search-results__snippet" ng-if="result.snippet" ng-bind-html="::result.snippetHtml"></p>
           </article>
         </div>
 
