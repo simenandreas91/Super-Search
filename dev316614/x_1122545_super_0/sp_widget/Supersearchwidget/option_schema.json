@@ -11,7 +11,7 @@
     "name": "input_placeholder",
     "label": "Input placeholder",
     "type": "string",
-    "default_value": "Finn artikler, bestillinger og record producers fra ett sok.",
+    "default_value": "Finn artikler, bestillingsskjema eller nyheter fra ett søk.",
     "section": "Labels",
     "hint": "Placeholder shown in the homepage search input."
   },
