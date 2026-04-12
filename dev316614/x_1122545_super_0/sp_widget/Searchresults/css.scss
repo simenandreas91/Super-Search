@@ -58,29 +58,56 @@
   padding-top: 18px;
 }
 
-.super-search-results__toolbar {
-  align-items: center;
+.super-search-results__content-layout {
   display: flex;
-  gap: 16px;
-  justify-content: space-between;
+  gap: 24px;
+  margin-top: 18px;
 }
 
-.super-search-results__filters {
+.super-search-results__sidebar {
+  flex: 0 0 240px;
+}
+
+.super-search-results__main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.super-search-results__filters-panel {
+  background: #f8fbff;
+  border: 1px solid #dbe4f0;
+  border-radius: 18px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  position: sticky;
+  top: 16px;
+}
+
+.super-search-results__filters-title {
+  color: #3e556f;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin: 0 0 2px;
+  text-transform: uppercase;
 }
 
 .super-search-results__filter {
   background: #f5f7fb;
   border: 1px solid #dbe4f0;
-  border-radius: 999px;
+  border-radius: 14px;
   color: #42566f;
   cursor: pointer;
+  display: flex;
+  justify-content: space-between;
   font-size: 13px;
   font-weight: 700;
-  padding: 8px 12px;
+  padding: 10px 12px;
+  text-align: left;
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  width: 100%;
 }
 
 .super-search-results__filter:hover,
@@ -139,7 +166,7 @@
 }
 
 .super-search-results__filter-count {
-  margin-left: 4px;
+  margin-left: 10px;
 }
 
 .super-search-results__list {
@@ -329,12 +356,7 @@
   .super-search-results__title {
     font-size: 26px;
   }
-
-  .super-search-results__toolbar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
+ 
   .super-search-results__query-pill {
     max-width: 100%;
   }
@@ -345,5 +367,18 @@
 
   .super-search-results__pager .btn {
     width: 100%;
+  }
+
+  .super-search-results__content-layout {
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .super-search-results__sidebar {
+    flex: 1 1 auto;
+  }
+
+  .super-search-results__filters-panel {
+    position: static;
   }
 }

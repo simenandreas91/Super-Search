@@ -24,6 +24,30 @@
     "hint": "Include article body text as a low-weight fallback search tier."
   },
   {
+    "name": "short_query_length",
+    "label": "Short query length",
+    "type": "integer",
+    "default_value": "2",
+    "section": "Behavior",
+    "hint": "Queries with this many characters or fewer use the short-query optimization profile."
+  },
+  {
+    "name": "short_query_candidate_limit",
+    "label": "Short query candidate limit",
+    "type": "integer",
+    "default_value": "20",
+    "section": "Behavior",
+    "hint": "Maximum number of candidates to fetch and score for short queries such as HR."
+  },
+  {
+    "name": "short_query_result_limit",
+    "label": "Short query result limit",
+    "type": "integer",
+    "default_value": "10",
+    "section": "Behavior",
+    "hint": "Maximum number of results exposed to the user for short queries."
+  },
+  {
     "name": "article_page_id",
     "label": "Article page ID",
     "type": "string",

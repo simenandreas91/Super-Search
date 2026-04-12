@@ -2,7 +2,7 @@
   <div class="super-search-results__header" ng-if="c.search.query">
     <div class="super-search-results__heading-row">
       <div>
-        <h2 class="super-search-results__title">Sokeresultater</h2>
+        <h2 class="super-search-results__title">Søkeresultater</h2>
         <p class="super-search-results__summary" ng-if="c.search.total">
           {{c.search.total}} treff for <span ng-bind="c.search.querySummaryLabel"></span>
         </p>
@@ -31,13 +31,10 @@
   </div>
 
   <div ng-if="c.search.query && c.search.filters.all.count">
-    <div class="super-search-results__range-row">
-      <div class="super-search-results__toolbar">
-        <p class="super-search-results__range">
-          <span ng-if="c.search.total">Viser {{c.getStartIndex()}}-{{c.getEndIndex()}} av {{c.search.total}}</span>
-          <span ng-if="!c.search.total">0 treff i valgt filter</span>
-        </p>
-        <div class="super-search-results__filters">
+    <div class="super-search-results__content-layout">
+      <aside class="super-search-results__sidebar">
+        <div class="super-search-results__filters-panel">
+          <p class="super-search-results__filters-title">Filtrer resultater</p>
           <button
             type="button"
             class="super-search-results__filter"
@@ -81,68 +78,75 @@
             <span class="super-search-results__filter-count" ng-bind="c.search.filters.featured_kb.count"></span>
           </button>
         </div>
+      </aside>
+
+      <div class="super-search-results__main">
+        <div class="super-search-results__range-row">
+          <p class="super-search-results__range">
+            <span ng-if="c.search.total">Viser {{c.getStartIndex()}}-{{c.getEndIndex()}} av {{c.search.total}}</span>
+            <span ng-if="!c.search.total">0 treff i valgt filter</span>
+          </p>
+        </div>
+
+        <div class="super-search-results__list" ng-if="c.search.total">
+          <article
+            class="super-search-results__item"
+            ng-class="{'super-search-results__item--request': result.isRequestItem, 'super-search-results__item--news': result.isNewsItem}"
+            ng-repeat="result in c.search.results track by (result.resultType + ':' + result.sysId)">
+            <div class="super-search-results__item-top">
+              <span
+                class="super-search-results__type-badge"
+                ng-class="{'super-search-results__type-badge--request': result.isRequestItem, 'super-search-results__type-badge--news': result.isNewsItem}"
+                ng-if="result.resultTypeLabel"
+                ng-bind="result.resultTypeLabel"></span>
+              <span class="super-search-results__meta-chip" ng-if="result.number" ng-bind="result.number"></span>
+              <span class="super-search-results__meta-chip" ng-if="result.kbName" ng-bind="result.kbName"></span>
+            </div>
+            <div class="super-search-results__title-row">
+              <span
+                class="super-search-results__icon"
+                ng-class="{
+                  'super-search-results__icon--knowledge': result.iconKey === 'knowledge',
+                  'super-search-results__icon--news': result.iconKey === 'news',
+                  'super-search-results__icon--request': result.iconKey === 'catalog_item',
+                  'super-search-results__icon--featured-kb': result.iconKey === 'featured_kb'
+                }"
+                ng-if="result.iconClass"
+                ng-attr-title="{{::result.iconLabel}}"
+                aria-hidden="true">
+                <i class="fa" ng-class="result.iconClass"></i>
+              </span>
+              <h3 class="super-search-results__item-title">
+                <a ng-href="{{::result.url}}" ng-bind="::result.title"></a>
+              </h3>
+            </div>
+            <div class="super-search-results__meta" ng-if="result.catalogName">
+              <span class="super-search-results__meta-chip" ng-if="result.catalogName" ng-bind="result.catalogName"></span>
+            </div>
+            <p class="super-search-results__snippet" ng-if="result.snippet" ng-bind="::result.snippet"></p>
+          </article>
+        </div>
+
+        <nav class="super-search-results__pager" ng-if="c.showPager()">
+          <button
+            type="button"
+            class="btn btn-default super-search-results__pager-button"
+            ng-click="c.goToPage(c.search.page - 1)"
+            ng-disabled="c.search.page <= 1 || c.isLoading">
+            Forrige
+          </button>
+          <span class="super-search-results__pager-status">
+            Side {{c.search.page}} av {{c.search.totalPages}}
+          </span>
+          <button
+            type="button"
+            class="btn btn-default super-search-results__pager-button"
+            ng-click="c.goToPage(c.search.page + 1)"
+            ng-disabled="!c.search.hasMore || c.isLoading">
+            Neste
+          </button>
+        </nav>
       </div>
     </div>
-
-    <div class="super-search-results__list" ng-if="c.search.total">
-      <article
-        class="super-search-results__item"
-        ng-class="{'super-search-results__item--request': result.isRequestItem, 'super-search-results__item--news': result.isNewsItem}"
-        ng-repeat="result in c.search.results track by (result.resultType + ':' + result.sysId)">
-        <div class="super-search-results__item-top">
-          <span
-            class="super-search-results__type-badge"
-            ng-class="{'super-search-results__type-badge--request': result.isRequestItem, 'super-search-results__type-badge--news': result.isNewsItem}"
-            ng-if="result.resultTypeLabel"
-            ng-bind="result.resultTypeLabel"></span>
-          <span class="super-search-results__meta-chip" ng-if="result.number" ng-bind="result.number"></span>
-        </div>
-        <div class="super-search-results__title-row">
-          <span
-            class="super-search-results__icon"
-            ng-class="{
-              'super-search-results__icon--knowledge': result.iconKey === 'knowledge',
-              'super-search-results__icon--news': result.iconKey === 'news',
-              'super-search-results__icon--request': result.iconKey === 'catalog_item',
-              'super-search-results__icon--featured-kb': result.iconKey === 'featured_kb'
-            }"
-            ng-if="result.iconClass"
-            ng-attr-title="{{::result.iconLabel}}"
-            aria-hidden="true">
-            <i class="fa" ng-class="result.iconClass"></i>
-          </span>
-          <h3 class="super-search-results__item-title">
-            <a ng-href="{{::result.url}}" ng-bind="::result.title"></a>
-          </h3>
-        </div>
-        <div class="super-search-results__meta" ng-if="result.kbName || result.catalogName || result.categoryName || result.language">
-          <span class="super-search-results__meta-chip" ng-if="result.kbName" ng-bind="result.kbName"></span>
-          <span class="super-search-results__meta-chip" ng-if="result.catalogName" ng-bind="result.catalogName"></span>
-          <span class="super-search-results__meta-chip" ng-if="result.categoryName" ng-bind="result.categoryName"></span>
-          <span class="super-search-results__meta-chip" ng-if="result.language" ng-bind="result.language"></span>
-        </div>
-        <p class="super-search-results__snippet" ng-if="result.snippet" ng-bind="::result.snippet"></p>
-      </article>
-    </div>
-
-    <nav class="super-search-results__pager" ng-if="c.showPager()">
-      <button
-        type="button"
-        class="btn btn-default super-search-results__pager-button"
-        ng-click="c.goToPage(c.search.page - 1)"
-        ng-disabled="c.search.page <= 1 || c.isLoading">
-        Forrige
-      </button>
-      <span class="super-search-results__pager-status">
-        Side {{c.search.page}} av {{c.search.totalPages}}
-      </span>
-      <button
-        type="button"
-        class="btn btn-default super-search-results__pager-button"
-        ng-click="c.goToPage(c.search.page + 1)"
-        ng-disabled="!c.search.hasMore || c.isLoading">
-        Neste
-      </button>
-    </nav>
   </div>
 </div>

@@ -13,6 +13,9 @@ superSearchEngine.prototype = {
         this.MAX_CANDIDATE_LIMIT = 200;
         this.MAX_SYNONYM_RECORDS = 100;
         this.MAX_SEARCH_TERMS = 8;
+        this.DEFAULT_SHORT_QUERY_LENGTH = 2;
+        this.DEFAULT_SHORT_QUERY_CANDIDATE_LIMIT = 20;
+        this.DEFAULT_SHORT_QUERY_RESULT_LIMIT = 10;
         this.DEFAULT_ARTICLE_PAGE_ID = 'kb_article';
         this.DEFAULT_CATALOG_ITEM_PAGE_ID = 'sc_cat_item';
         this.DEFAULT_NEWS_PAGE_ID = 'cd_news_article';
@@ -36,6 +39,9 @@ superSearchEngine.prototype = {
         var featuredKnowledgeBaseLabel = this._cleanQuery(request.featuredKnowledgeBaseLabel);
         var resultFilter = this._normalizeResultFilter(request.resultFilter);
         var includeBodySearch = this._toBoolean(request.includeBodySearch);
+        var shortQueryLength = this._clampInteger(request.shortQueryLength, this.DEFAULT_SHORT_QUERY_LENGTH, 1, 10);
+        var shortQueryCandidateLimit = this._clampInteger(request.shortQueryCandidateLimit, this.DEFAULT_SHORT_QUERY_CANDIDATE_LIMIT, 1, this.MAX_CANDIDATE_LIMIT);
+        var shortQueryResultLimit = this._clampInteger(request.shortQueryResultLimit, this.DEFAULT_SHORT_QUERY_RESULT_LIMIT, 1, this.MAX_CANDIDATE_LIMIT);
         var requestedPage = this._clampInteger(request.page, 1, 1, 10000);
         var response = {
             query: query,
@@ -53,6 +59,7 @@ superSearchEngine.prototype = {
         };
         var context;
         var queryProfile;
+        var searchStrategy;
         var scoredCandidates;
         var pagedCandidates;
         var startIndex;
@@ -63,13 +70,16 @@ superSearchEngine.prototype = {
 
         context = this._buildContext(articlePageId, catalogItemPageId, newsPageId, newsContentTypeId, portalSysId, featuredKnowledgeBaseId, featuredKnowledgeBaseLabel);
         queryProfile = this._buildQueryProfile(query, normalizedQuery, synonymDictionaryId);
+        searchStrategy = this._buildSearchStrategy(queryProfile, candidateLimit, pageSize, includeBodySearch, shortQueryLength, shortQueryCandidateLimit, shortQueryResultLimit);
         response.querySummaryLabel = this._buildQuerySummaryLabel(queryProfile.searchTerms);
         response.hasSynonymExpansion = queryProfile.synonymTerms.length > 0;
-        scoredCandidates = this._getScoredCandidates(context, queryProfile, candidateLimit, includeBodySearch);
+        response.pageSize = searchStrategy.pageSize;
+        scoredCandidates = this._getScoredCandidates(context, queryProfile, searchStrategy.candidateLimit, searchStrategy.includeBodySearch);
+        scoredCandidates = this._limitResults(scoredCandidates, searchStrategy.resultLimit);
         response.filters = this._buildFilterSummary(scoredCandidates, context);
         scoredCandidates = this._applyResultFilter(scoredCandidates, resultFilter);
         response.total = scoredCandidates.length;
-        response.totalPages = response.total > 0 ? Math.ceil(response.total / pageSize) : 0;
+        response.totalPages = response.total > 0 ? Math.ceil(response.total / response.pageSize) : 0;
 
         if (response.totalPages > 0 && requestedPage > response.totalPages) {
             response.page = response.totalPages;
@@ -80,8 +90,8 @@ superSearchEngine.prototype = {
             return response;
         }
 
-        startIndex = (response.page - 1) * pageSize;
-        pagedCandidates = scoredCandidates.slice(startIndex, startIndex + pageSize);
+        startIndex = (response.page - 1) * response.pageSize;
+        pagedCandidates = scoredCandidates.slice(startIndex, startIndex + response.pageSize);
         response.hasMore = response.page < response.totalPages;
         response.results = this._shapeResults(pagedCandidates, queryProfile.primaryTerm.normalizedValue, context);
 
@@ -154,6 +164,28 @@ superSearchEngine.prototype = {
         };
     },
 
+    _buildSearchStrategy: function(queryProfile, candidateLimit, pageSize, includeBodySearch, shortQueryLength, shortQueryCandidateLimit, shortQueryResultLimit) {
+        var primaryLength = queryProfile && queryProfile.primaryTerm && queryProfile.primaryTerm.normalizedValue ?
+            queryProfile.primaryTerm.normalizedValue.length : 0;
+        var isShortQuery = primaryLength > 0 && primaryLength <= shortQueryLength;
+
+        return {
+            isShortQuery: isShortQuery,
+            candidateLimit: isShortQuery ? Math.min(candidateLimit, shortQueryCandidateLimit) : candidateLimit,
+            resultLimit: isShortQuery ? shortQueryResultLimit : 0,
+            pageSize: isShortQuery ? Math.min(pageSize, shortQueryResultLimit) : pageSize,
+            includeBodySearch: isShortQuery ? false : includeBodySearch
+        };
+    },
+
+    _limitResults: function(candidates, resultLimit) {
+        if (!resultLimit || resultLimit < 1 || candidates.length <= resultLimit) {
+            return candidates;
+        }
+
+        return candidates.slice(0, resultLimit);
+    },
+
     _buildQuerySummaryLabel: function(searchTerms) {
         var parts = [];
         var index;
@@ -215,7 +247,7 @@ superSearchEngine.prototype = {
         var tokenMap = this._buildTokenMap(tokens);
         var synonymTerms = [];
         var uniqueTerms = {};
-        var setTerms;
+        var synonymDefinition;
         var index;
 
         if (!normalizedQuery || !synonymRecord.isValid() || !synonymRecord.isValidField('synset')) {
@@ -236,19 +268,20 @@ superSearchEngine.prototype = {
         synonymRecord.query();
 
         while (synonymRecord.next()) {
-            setTerms = this._splitSynsetTerms(synonymRecord.getValue('synset'));
+            synonymDefinition = this._parseSynsetDefinition(synonymRecord.getValue('synset'));
 
-            if (!this._synonymSetMatchesQuery(normalizedQuery, tokenMap, setTerms)) {
+            if (!this._synonymSetMatchesQuery(normalizedQuery, tokenMap, synonymDefinition.matchTerms)) {
                 continue;
             }
 
-            for (index = 0; index < setTerms.length; index++) {
-                if (this._queryMatchesSynonymTerm(normalizedQuery, tokenMap, setTerms[index]) || uniqueTerms[setTerms[index].normalizedValue]) {
+            for (index = 0; index < synonymDefinition.expansionTerms.length; index++) {
+                if (this._queryMatchesSynonymTerm(normalizedQuery, tokenMap, synonymDefinition.expansionTerms[index]) ||
+                    uniqueTerms[synonymDefinition.expansionTerms[index].normalizedValue]) {
                     continue;
                 }
 
-                uniqueTerms[setTerms[index].normalizedValue] = true;
-                synonymTerms.push(setTerms[index].value);
+                uniqueTerms[synonymDefinition.expansionTerms[index].normalizedValue] = true;
+                synonymTerms.push(synonymDefinition.expansionTerms[index].value);
             }
         }
 
@@ -271,6 +304,29 @@ superSearchEngine.prototype = {
 
             condition.addOrCondition('synset', 'CONTAINS', token);
         }
+    },
+
+    _parseSynsetDefinition: function(value) {
+        var parts = this._safeString(value).split('=>');
+        var leftTerms;
+        var rightTerms;
+
+        if (parts.length > 1) {
+            leftTerms = this._splitSynsetTerms(parts.shift());
+            rightTerms = this._splitSynsetTerms(parts.join('=>'));
+
+            return {
+                matchTerms: leftTerms,
+                expansionTerms: rightTerms
+            };
+        }
+
+        leftTerms = this._splitSynsetTerms(value);
+
+        return {
+            matchTerms: leftTerms,
+            expansionTerms: leftTerms
+        };
     },
 
     _splitSynsetTerms: function(value) {

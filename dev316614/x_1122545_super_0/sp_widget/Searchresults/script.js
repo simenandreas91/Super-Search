@@ -4,6 +4,9 @@
   var pageSize = parseIntegerOption(options.page_size, 10);
   var candidateLimit = parseIntegerOption(options.candidate_limit, 75);
   var includeBodySearch = parseBooleanOption(options.include_body_search, true);
+  var shortQueryLength = parseIntegerOption(options.short_query_length, 2);
+  var shortQueryCandidateLimit = parseIntegerOption(options.short_query_candidate_limit, 20);
+  var shortQueryResultLimit = parseIntegerOption(options.short_query_result_limit, 10);
   var articlePageId = options.article_page_id || 'kb_article';
   var catalogItemPageId = options.catalog_item_page_id || 'sc_cat_item';
   var newsPageId = options.news_page_id || 'cd_news_article';
@@ -40,6 +43,9 @@
     catalogItemPageId: catalogItemPageId,
     newsPageId: newsPageId,
     newsContentTypeId: newsContentTypeId,
+    shortQueryLength: shortQueryLength,
+    shortQueryCandidateLimit: shortQueryCandidateLimit,
+    shortQueryResultLimit: shortQueryResultLimit,
     synonymDictionaryId: synonymDictionaryId,
     portalSysId: portalSysId,
     featuredKnowledgeBaseId: featuredKnowledgeBaseId,
@@ -53,6 +59,9 @@
     pageSize: pageSize,
     candidateLimit: candidateLimit,
     includeBodySearch: includeBodySearch,
+    shortQueryLength: shortQueryLength,
+    shortQueryCandidateLimit: shortQueryCandidateLimit,
+    shortQueryResultLimit: shortQueryResultLimit,
     articlePageId: articlePageId,
     catalogItemPageId: catalogItemPageId,
     newsPageId: newsPageId,
