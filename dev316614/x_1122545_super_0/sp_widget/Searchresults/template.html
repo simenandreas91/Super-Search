@@ -4,10 +4,10 @@
       <div>
         <h2 class="super-search-results__title">Sokeresultater</h2>
         <p class="super-search-results__summary" ng-if="c.search.total">
-          {{c.search.total}} treff for "<span ng-bind="c.search.query"></span>"
+          {{c.search.total}} treff for <span ng-bind="c.search.querySummaryLabel"></span>
         </p>
         <p class="super-search-results__summary" ng-if="!c.search.total">
-          Ingen treff for "<span ng-bind="c.search.query"></span>"
+          Ingen treff for <span ng-bind="c.search.querySummaryLabel"></span>
         </p>
       </div>
       <div class="super-search-results__query-pill" ng-bind="c.search.query"></div>

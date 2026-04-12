@@ -8,6 +8,7 @@
   var catalogItemPageId = options.catalog_item_page_id || 'sc_cat_item';
   var newsPageId = options.news_page_id || 'cd_news_article';
   var newsContentTypeId = options.news_content_type_id || '4880186c53202110a489ddeeff7b129a';
+  var synonymDictionaryId = options.synonym_dictionary_id || '';
   var featuredKnowledgeBaseId = options.featured_knowledge_base_id || 'bb0370019f22120047a2d126c42e7073';
   var featuredKnowledgeBaseLabel = options.featured_knowledge_base_label || 'Human Resources General Knowledge';
   var portalRecord = $sp.getPortalRecord();
@@ -39,6 +40,7 @@
     catalogItemPageId: catalogItemPageId,
     newsPageId: newsPageId,
     newsContentTypeId: newsContentTypeId,
+    synonymDictionaryId: synonymDictionaryId,
     portalSysId: portalSysId,
     featuredKnowledgeBaseId: featuredKnowledgeBaseId,
     featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,
@@ -55,6 +57,7 @@
     catalogItemPageId: catalogItemPageId,
     newsPageId: newsPageId,
     newsContentTypeId: newsContentTypeId,
+    synonymDictionaryId: synonymDictionaryId,
     portalSysId: portalSysId,
     featuredKnowledgeBaseId: featuredKnowledgeBaseId,
     featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,

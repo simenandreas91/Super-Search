@@ -4,12 +4,15 @@ superSearchEngine.prototype = {
         this.KNOWLEDGE_TABLE = 'kb_knowledge';
         this.CATALOG_TABLE = 'sc_cat_item';
         this.NEWS_TABLE = 'sn_cd_content_base';
+        this.SYNONYM_TABLE = 'ts_synonym_set';
         this.CONNECTED_CONTENT_TABLE = 'm2m_connected_content';
         this.PORTAL_TAXONOMY_TABLE = 'm2m_sp_portal_taxonomy';
         this.DEFAULT_PAGE_SIZE = 10;
         this.DEFAULT_CANDIDATE_LIMIT = 75;
         this.MAX_PAGE_SIZE = 50;
         this.MAX_CANDIDATE_LIMIT = 200;
+        this.MAX_SYNONYM_RECORDS = 100;
+        this.MAX_SEARCH_TERMS = 8;
         this.DEFAULT_ARTICLE_PAGE_ID = 'kb_article';
         this.DEFAULT_CATALOG_ITEM_PAGE_ID = 'sc_cat_item';
         this.DEFAULT_NEWS_PAGE_ID = 'cd_news_article';
@@ -27,6 +30,7 @@ superSearchEngine.prototype = {
         var catalogItemPageId = this._safeString(request.catalogItemPageId) || this.DEFAULT_CATALOG_ITEM_PAGE_ID;
         var newsPageId = this._safeString(request.newsPageId) || this.DEFAULT_NEWS_PAGE_ID;
         var newsContentTypeId = this._safeString(request.newsContentTypeId) || this.DEFAULT_NEWS_CONTENT_TYPE_ID;
+        var synonymDictionaryId = this._safeString(request.synonymDictionaryId);
         var portalSysId = this._safeString(request.portalSysId);
         var featuredKnowledgeBaseId = this._safeString(request.featuredKnowledgeBaseId);
         var featuredKnowledgeBaseLabel = this._cleanQuery(request.featuredKnowledgeBaseLabel);
@@ -36,6 +40,8 @@ superSearchEngine.prototype = {
         var response = {
             query: query,
             normalizedQuery: normalizedQuery,
+            querySummaryLabel: '"' + query + '"',
+            hasSynonymExpansion: false,
             activeFilter: resultFilter,
             filters: this._buildEmptyFilters(featuredKnowledgeBaseId, featuredKnowledgeBaseLabel),
             page: requestedPage,
@@ -46,6 +52,7 @@ superSearchEngine.prototype = {
             results: []
         };
         var context;
+        var queryProfile;
         var scoredCandidates;
         var pagedCandidates;
         var startIndex;
@@ -55,7 +62,10 @@ superSearchEngine.prototype = {
         }
 
         context = this._buildContext(articlePageId, catalogItemPageId, newsPageId, newsContentTypeId, portalSysId, featuredKnowledgeBaseId, featuredKnowledgeBaseLabel);
-        scoredCandidates = this._getScoredCandidates(context, query, normalizedQuery, candidateLimit, includeBodySearch);
+        queryProfile = this._buildQueryProfile(query, normalizedQuery, synonymDictionaryId);
+        response.querySummaryLabel = this._buildQuerySummaryLabel(queryProfile.searchTerms);
+        response.hasSynonymExpansion = queryProfile.synonymTerms.length > 0;
+        scoredCandidates = this._getScoredCandidates(context, queryProfile, candidateLimit, includeBodySearch);
         response.filters = this._buildFilterSummary(scoredCandidates, context);
         scoredCandidates = this._applyResultFilter(scoredCandidates, resultFilter);
         response.total = scoredCandidates.length;
@@ -73,7 +83,7 @@ superSearchEngine.prototype = {
         startIndex = (response.page - 1) * pageSize;
         pagedCandidates = scoredCandidates.slice(startIndex, startIndex + pageSize);
         response.hasMore = response.page < response.totalPages;
-        response.results = this._shapeResults(pagedCandidates, normalizedQuery, context);
+        response.results = this._shapeResults(pagedCandidates, queryProfile.primaryTerm.normalizedValue, context);
 
         return response;
     },
@@ -134,23 +144,236 @@ superSearchEngine.prototype = {
         };
     },
 
-    _getScoredCandidates: function(context, query, normalizedQuery, candidateLimit, includeBodySearch) {
+    _buildQueryProfile: function(query, normalizedQuery, synonymDictionaryId) {
+        var searchTerms = this._getExpandedSearchTerms(query, normalizedQuery, synonymDictionaryId);
+
+        return {
+            primaryTerm: searchTerms[0],
+            synonymTerms: searchTerms.slice(1),
+            searchTerms: searchTerms
+        };
+    },
+
+    _buildQuerySummaryLabel: function(searchTerms) {
+        var parts = [];
+        var index;
+
+        if (!searchTerms || searchTerms.length === 0) {
+            return '""';
+        }
+
+        for (index = 0; index < searchTerms.length; index++) {
+            parts.push('"' + searchTerms[index].value + '"');
+        }
+
+        if (parts.length === 1) {
+            return parts[0];
+        }
+
+        if (parts.length === 2) {
+            return parts[0] + ' eller ' + parts[1];
+        }
+
+        return parts.slice(0, parts.length - 1).join(', ') + ' eller ' + parts[parts.length - 1];
+    },
+
+    _getExpandedSearchTerms: function(query, normalizedQuery, synonymDictionaryId) {
+        var terms = [];
+        var uniqueTerms = {};
+        var synonymTerms = this._getMatchedSynonymTerms(normalizedQuery, synonymDictionaryId);
+        var index;
+
+        this._appendSearchTerm(terms, uniqueTerms, query, true);
+
+        for (index = 0; index < synonymTerms.length && terms.length < this.MAX_SEARCH_TERMS; index++) {
+            this._appendSearchTerm(terms, uniqueTerms, synonymTerms[index], false);
+        }
+
+        return terms;
+    },
+
+    _appendSearchTerm: function(terms, uniqueTerms, value, isPrimary) {
+        var cleanValue = this._cleanQuery(value);
+        var normalizedValue = this._normalizeQuery(cleanValue);
+
+        if (!normalizedValue || uniqueTerms[normalizedValue]) {
+            return;
+        }
+
+        uniqueTerms[normalizedValue] = true;
+        terms.push({
+            value: cleanValue,
+            normalizedValue: normalizedValue,
+            tokens: this._tokenize(normalizedValue),
+            isPrimary: isPrimary === true
+        });
+    },
+
+    _getMatchedSynonymTerms: function(normalizedQuery, synonymDictionaryId) {
+        var synonymRecord = new GlideRecord(this.SYNONYM_TABLE);
         var tokens = this._tokenize(normalizedQuery);
+        var tokenMap = this._buildTokenMap(tokens);
+        var synonymTerms = [];
+        var uniqueTerms = {};
+        var setTerms;
+        var index;
+
+        if (!normalizedQuery || !synonymRecord.isValid() || !synonymRecord.isValidField('synset')) {
+            return synonymTerms;
+        }
+
+        if (synonymRecord.isValidField('active')) {
+            synonymRecord.addActiveQuery();
+        }
+
+        if (synonymDictionaryId && synonymRecord.isValidField('dictionary')) {
+            synonymRecord.addQuery('dictionary', synonymDictionaryId);
+        }
+
+        synonymRecord.addNotNullQuery('synset');
+        this._applySynonymPrefilter(synonymRecord, normalizedQuery, tokens);
+        synonymRecord.setLimit(this.MAX_SYNONYM_RECORDS);
+        synonymRecord.query();
+
+        while (synonymRecord.next()) {
+            setTerms = this._splitSynsetTerms(synonymRecord.getValue('synset'));
+
+            if (!this._synonymSetMatchesQuery(normalizedQuery, tokenMap, setTerms)) {
+                continue;
+            }
+
+            for (index = 0; index < setTerms.length; index++) {
+                if (this._queryMatchesSynonymTerm(normalizedQuery, tokenMap, setTerms[index]) || uniqueTerms[setTerms[index].normalizedValue]) {
+                    continue;
+                }
+
+                uniqueTerms[setTerms[index].normalizedValue] = true;
+                synonymTerms.push(setTerms[index].value);
+            }
+        }
+
+        return synonymTerms;
+    },
+
+    _applySynonymPrefilter: function(record, normalizedQuery, tokens) {
+        var condition;
+        var index;
+        var token;
+
+        condition = record.addQuery('synset', 'CONTAINS', normalizedQuery);
+
+        for (index = 0; index < tokens.length; index++) {
+            token = tokens[index];
+
+            if (!token || token.length < 2 || token === normalizedQuery) {
+                continue;
+            }
+
+            condition.addOrCondition('synset', 'CONTAINS', token);
+        }
+    },
+
+    _splitSynsetTerms: function(value) {
+        var rawTerms = this._safeString(value).split(',');
+        var cleanTerms = [];
+        var uniqueTerms = {};
+        var index;
+        var cleanValue;
+        var normalizedTerm;
+
+        for (index = 0; index < rawTerms.length; index++) {
+            cleanValue = this._cleanQuery(rawTerms[index]);
+            normalizedTerm = this._normalizeQuery(cleanValue);
+
+            if (!normalizedTerm || uniqueTerms[normalizedTerm]) {
+                continue;
+            }
+
+            uniqueTerms[normalizedTerm] = true;
+            cleanTerms.push({
+                value: cleanValue,
+                normalizedValue: normalizedTerm
+            });
+        }
+
+        return cleanTerms;
+    },
+
+    _synonymSetMatchesQuery: function(normalizedQuery, tokenMap, setTerms) {
+        var index;
+
+        for (index = 0; index < setTerms.length; index++) {
+            if (this._queryMatchesSynonymTerm(normalizedQuery, tokenMap, setTerms[index])) {
+                return true;
+            }
+        }
+
+        return false;
+    },
+
+    _queryMatchesSynonymTerm: function(normalizedQuery, tokenMap, synonymTerm) {
+        var normalizedSynonymTerm;
+
+        if (!normalizedQuery || !synonymTerm) {
+            return false;
+        }
+
+        normalizedSynonymTerm = synonymTerm.normalizedValue || this._normalizeQuery(synonymTerm);
+
+        if (normalizedQuery === normalizedSynonymTerm) {
+            return true;
+        }
+
+        if (normalizedSynonymTerm.indexOf(' ') === -1 && tokenMap[normalizedSynonymTerm]) {
+            return true;
+        }
+
+        return this._containsWholePhrase(normalizedQuery, normalizedSynonymTerm);
+    },
+
+    _containsWholePhrase: function(text, phrase) {
+        var escapedPhrase;
+        var expression;
+
+        if (!text || !phrase) {
+            return false;
+        }
+
+        escapedPhrase = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        expression = new RegExp('(^|\\s)' + escapedPhrase + '(\\s|$)');
+
+        return expression.test(text);
+    },
+
+    _buildTokenMap: function(tokens) {
+        var tokenMap = {};
+        var index;
+
+        for (index = 0; index < tokens.length; index++) {
+            if (tokens[index]) {
+                tokenMap[tokens[index]] = true;
+            }
+        }
+
+        return tokenMap;
+    },
+
+    _getScoredCandidates: function(context, queryProfile, candidateLimit, includeBodySearch) {
         var knowledgeLimit = this._clampInteger(Math.ceil(candidateLimit * 0.5), candidateLimit, 1, candidateLimit);
         var catalogLimit = this._clampInteger(Math.ceil(candidateLimit * 0.3), candidateLimit, 1, candidateLimit);
         var newsLimit = this._clampInteger(Math.ceil(candidateLimit * 0.25), candidateLimit, 1, candidateLimit);
-        var knowledgeCandidates = this._getKnowledgeCandidates(context, query, normalizedQuery, knowledgeLimit, includeBodySearch);
-        var catalogCandidates = this._getCatalogCandidates(context, query, normalizedQuery, catalogLimit, includeBodySearch);
-        var newsCandidates = this._getNewsCandidates(context, query, normalizedQuery, newsLimit);
+        var knowledgeCandidates = this._getKnowledgeCandidates(context, queryProfile, knowledgeLimit, includeBodySearch);
+        var catalogCandidates = this._getCatalogCandidates(context, queryProfile, catalogLimit, includeBodySearch);
+        var newsCandidates = this._getNewsCandidates(context, queryProfile, newsLimit);
         var mergedCandidates = knowledgeCandidates.concat(catalogCandidates, newsCandidates);
 
-        return this._scoreAndSortCandidates(mergedCandidates, normalizedQuery, tokens);
+        return this._scoreAndSortCandidates(mergedCandidates, queryProfile);
     },
 
-    _getKnowledgeCandidates: function(context, query, normalizedQuery, candidateLimit, includeBodySearch) {
+    _getKnowledgeCandidates: function(context, queryProfile, candidateLimit, includeBodySearch) {
         var candidateMap = {};
         var candidates = [];
-        var passDefinitions = this._buildKnowledgePassDefinitions(context, query, includeBodySearch);
+        var passDefinitions = this._buildKnowledgePassDefinitions(context, queryProfile, includeBodySearch);
         var index;
 
         for (index = 0; index < passDefinitions.length; index++) {
@@ -164,7 +387,7 @@ superSearchEngine.prototype = {
         return candidates;
     },
 
-    _getCatalogCandidates: function(context, query, normalizedQuery, candidateLimit, includeBodySearch) {
+    _getCatalogCandidates: function(context, queryProfile, candidateLimit, includeBodySearch) {
         var candidateMap = {};
         var candidates = [];
         var passDefinitions;
@@ -174,7 +397,7 @@ superSearchEngine.prototype = {
             return candidates;
         }
 
-        passDefinitions = this._buildCatalogPassDefinitions(context, query, includeBodySearch);
+        passDefinitions = this._buildCatalogPassDefinitions(context, queryProfile, includeBodySearch);
 
         for (index = 0; index < passDefinitions.length; index++) {
             if (candidates.length >= candidateLimit) {
@@ -187,10 +410,10 @@ superSearchEngine.prototype = {
         return this._filterConnectedCatalogCandidates(candidates, context);
     },
 
-    _getNewsCandidates: function(context, query, normalizedQuery, candidateLimit) {
+    _getNewsCandidates: function(context, queryProfile, candidateLimit) {
         var candidateMap = {};
         var candidates = [];
-        var passDefinitions = this._buildNewsPassDefinitions(context, query);
+        var passDefinitions = this._buildNewsPassDefinitions(context, queryProfile);
         var index;
 
         for (index = 0; index < passDefinitions.length; index++) {
@@ -204,26 +427,13 @@ superSearchEngine.prototype = {
         return candidates;
     },
 
-    _buildKnowledgePassDefinitions: function(context, query, includeBodySearch) {
+    _buildKnowledgePassDefinitions: function(context, queryProfile, includeBodySearch) {
         var passes = [];
+        var seenPasses = {};
         var metadataFields = [];
 
         if (context.knowledgeFields.shortDescription) {
-            passes.push({
-                field: 'short_description',
-                operator: '=',
-                value: query
-            });
-            passes.push({
-                field: 'short_description',
-                operator: 'STARTSWITH',
-                value: query
-            });
-            passes.push({
-                field: 'short_description',
-                operator: 'CONTAINS',
-                value: query
-            });
+            this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'short_description', ['=', 'STARTSWITH', 'CONTAINS']);
         }
 
         if (context.knowledgeFields.meta) {
@@ -235,52 +445,27 @@ superSearchEngine.prototype = {
         }
 
         if (metadataFields.length > 0) {
-            passes.push({
-                fields: metadataFields,
-                operator: 'CONTAINS',
-                value: query
-            });
+            this._appendMultiFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, metadataFields, 'CONTAINS');
         }
 
         if (includeBodySearch && context.knowledgeFields.text) {
-            passes.push({
-                field: 'text',
-                operator: 'CONTAINS',
-                value: query
-            });
+            this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'text', ['CONTAINS']);
         }
 
         return passes;
     },
 
-    _buildCatalogPassDefinitions: function(context, query, includeBodySearch) {
+    _buildCatalogPassDefinitions: function(context, queryProfile, includeBodySearch) {
         var passes = [];
+        var seenPasses = {};
         var metadataFields = [];
 
         if (context.catalogFields.name) {
-            passes.push({
-                field: 'name',
-                operator: '=',
-                value: query
-            });
-            passes.push({
-                field: 'name',
-                operator: 'STARTSWITH',
-                value: query
-            });
-            passes.push({
-                field: 'name',
-                operator: 'CONTAINS',
-                value: query
-            });
+            this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'name', ['=', 'STARTSWITH', 'CONTAINS']);
         }
 
         if (context.catalogFields.shortDescription) {
-            passes.push({
-                field: 'short_description',
-                operator: 'CONTAINS',
-                value: query
-            });
+            this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'short_description', ['CONTAINS']);
         }
 
         if (context.catalogFields.meta) {
@@ -288,46 +473,69 @@ superSearchEngine.prototype = {
         }
 
         if (metadataFields.length > 0) {
-            passes.push({
-                fields: metadataFields,
-                operator: 'CONTAINS',
-                value: query
-            });
+            this._appendMultiFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, metadataFields, 'CONTAINS');
         }
 
         if (includeBodySearch && context.catalogFields.description) {
-            passes.push({
-                field: 'description',
-                operator: 'CONTAINS',
-                value: query
-            });
+            this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'description', ['CONTAINS']);
         }
 
         return passes;
     },
 
-    _buildNewsPassDefinitions: function(context, query) {
+    _buildNewsPassDefinitions: function(context, queryProfile) {
         var passes = [];
+        var seenPasses = {};
 
         if (context.newsFields.title) {
-            passes.push({
-                field: 'title',
-                operator: '=',
-                value: query
-            });
-            passes.push({
-                field: 'title',
-                operator: 'STARTSWITH',
-                value: query
-            });
-            passes.push({
-                field: 'title',
-                operator: 'CONTAINS',
-                value: query
-            });
+            this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'title', ['=', 'STARTSWITH', 'CONTAINS']);
         }
 
         return passes;
+    },
+
+    _appendFieldPassDefinitions: function(passes, seenPasses, searchTerms, fieldName, operators) {
+        var termIndex;
+        var operatorIndex;
+
+        for (termIndex = 0; termIndex < searchTerms.length; termIndex++) {
+            for (operatorIndex = 0; operatorIndex < operators.length; operatorIndex++) {
+                this._appendPassDefinition(passes, seenPasses, {
+                    field: fieldName,
+                    operator: operators[operatorIndex],
+                    value: searchTerms[termIndex].value
+                });
+            }
+        }
+    },
+
+    _appendMultiFieldPassDefinitions: function(passes, seenPasses, searchTerms, fields, operator) {
+        var termIndex;
+
+        for (termIndex = 0; termIndex < searchTerms.length; termIndex++) {
+            this._appendPassDefinition(passes, seenPasses, {
+                fields: fields,
+                operator: operator,
+                value: searchTerms[termIndex].value
+            });
+        }
+    },
+
+    _appendPassDefinition: function(passes, seenPasses, passDefinition) {
+        var signature = this._getPassDefinitionSignature(passDefinition);
+
+        if (seenPasses[signature]) {
+            return;
+        }
+
+        seenPasses[signature] = true;
+        passes.push(passDefinition);
+    },
+
+    _getPassDefinitionSignature: function(passDefinition) {
+        var fields = passDefinition.fields ? passDefinition.fields.join('|') : passDefinition.field;
+
+        return fields + '::' + passDefinition.operator + '::' + passDefinition.value;
     },
 
     _collectKnowledgeCandidatesForPass: function(context, passDefinition, candidateLimit, candidateMap, candidates) {
@@ -613,14 +821,14 @@ superSearchEngine.prototype = {
         return parts.join(' ');
     },
 
-    _scoreAndSortCandidates: function(candidates, normalizedQuery, tokens) {
+    _scoreAndSortCandidates: function(candidates, queryProfile) {
         var index;
         var candidate;
         var scoredCandidates = [];
 
         for (index = 0; index < candidates.length; index++) {
             candidate = candidates[index];
-            candidate.score = this._calculateScore(candidate, normalizedQuery, tokens);
+            candidate.score = this._calculateScore(candidate, queryProfile);
 
             if (candidate.resultType === 'knowledge') {
                 candidate.score += 20;
@@ -638,41 +846,87 @@ superSearchEngine.prototype = {
         return scoredCandidates;
     },
 
-    _calculateScore: function(candidate, normalizedQuery, tokens) {
+    _calculateScore: function(candidate, queryProfile) {
         var title = this._normalizeQuery(candidate.title);
         var metadata = this._normalizeQuery(candidate.metaText);
         var body = this._normalizeQuery(this._stripHtml(candidate.bodyText));
+        var primaryTerm = queryProfile.primaryTerm;
         var score = 0;
 
-        if (title) {
-            if (title === normalizedQuery) {
-                score += 1000;
-            } else if (title.indexOf(normalizedQuery) === 0) {
-                score += 800;
-            } else if (title.indexOf(normalizedQuery) > -1) {
-                score += 600;
-            }
+        score += this._calculateTermScore(title, primaryTerm, {
+            exact: 1000,
+            startsWith: 800,
+            contains: 600,
+            tokenWeight: 40
+        });
+        score += this._getBestSynonymScore(title, queryProfile.synonymTerms, {
+            exact: 450,
+            startsWith: 360,
+            contains: 270,
+            tokenWeight: 18
+        });
 
-            score += this._scoreTokenCoverage(title, tokens, 40);
+        score += this._calculateTermScore(metadata, primaryTerm, {
+            contains: 250,
+            tokenWeight: 12
+        });
+        score += this._getBestSynonymScore(metadata, queryProfile.synonymTerms, {
+            contains: 110,
+            tokenWeight: 5
+        });
+
+        score += this._calculateTermScore(body, primaryTerm, {
+            contains: 100,
+            tokenWeight: 4
+        });
+        score += this._getBestSynonymScore(body, queryProfile.synonymTerms, {
+            contains: 45,
+            tokenWeight: 2
+        });
+
+        return score;
+    },
+
+    _calculateTermScore: function(haystack, searchTerm, weights) {
+        var score = 0;
+
+        if (!haystack || !searchTerm || !searchTerm.normalizedValue) {
+            return 0;
         }
 
-        if (metadata) {
-            if (metadata.indexOf(normalizedQuery) > -1) {
-                score += 250;
-            }
-
-            score += this._scoreTokenCoverage(metadata, tokens, 12);
+        if (weights.exact && haystack === searchTerm.normalizedValue) {
+            score += weights.exact;
+        } else if (weights.startsWith && haystack.indexOf(searchTerm.normalizedValue) === 0) {
+            score += weights.startsWith;
+        } else if (weights.contains && haystack.indexOf(searchTerm.normalizedValue) > -1) {
+            score += weights.contains;
         }
 
-        if (body) {
-            if (body.indexOf(normalizedQuery) > -1) {
-                score += 100;
-            }
-
-            score += this._scoreTokenCoverage(body, tokens, 4);
+        if (weights.tokenWeight) {
+            score += this._scoreTokenCoverage(haystack, searchTerm.tokens, weights.tokenWeight);
         }
 
         return score;
+    },
+
+    _getBestSynonymScore: function(haystack, synonymTerms, weights) {
+        var highestScore = 0;
+        var index;
+        var currentScore;
+
+        if (!haystack || !synonymTerms || synonymTerms.length === 0) {
+            return 0;
+        }
+
+        for (index = 0; index < synonymTerms.length; index++) {
+            currentScore = this._calculateTermScore(haystack, synonymTerms[index], weights);
+
+            if (currentScore > highestScore) {
+                highestScore = currentScore;
+            }
+        }
+
+        return highestScore;
     },
 
     _scoreTokenCoverage: function(haystack, tokens, tokenWeight) {

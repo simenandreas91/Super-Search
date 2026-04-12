@@ -64,6 +64,14 @@
     "hint": "Optional override. Leave empty to use the current portal context automatically."
   },
   {
+    "name": "synonym_dictionary_id",
+    "label": "Synonym dictionary sys_id",
+    "type": "string",
+    "default_value": "",
+    "section": "Behavior",
+    "hint": "Optional ts_synonym_set dictionary sys_id. Leave empty to use all active synonym sets."
+  },
+  {
     "name": "featured_knowledge_base_id",
     "label": "Featured knowledge base sys_id",
     "type": "string",
