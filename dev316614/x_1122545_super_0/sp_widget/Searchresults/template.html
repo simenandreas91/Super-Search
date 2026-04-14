@@ -43,14 +43,30 @@
             ng-disabled="c.isLoading">
             Alle <span class="super-search-results__filter-count" ng-bind="c.search.filters.all.count"></span>
           </button>
-          <button
-            type="button"
-            class="super-search-results__filter"
-            ng-class="{'super-search-results__filter--active': c.isActiveFilter('knowledge')}"
-            ng-click="c.setFilter('knowledge')"
-            ng-disabled="c.isLoading">
-            Artikler <span class="super-search-results__filter-count" ng-bind="c.search.filters.knowledge.count"></span>
-          </button>
+          <div class="super-search-results__filter-group">
+            <div class="super-search-results__filter-group-header">
+              <span class="super-search-results__filter-group-title">Kunnskapsartikler</span>
+              <span class="super-search-results__filter-group-count" ng-bind="c.search.filters.knowledge_total.count"></span>
+            </div>
+            <button
+              type="button"
+              class="super-search-results__filter super-search-results__filter--subfilter super-search-results__filter--knowledge-base"
+              ng-if="c.search.filters.featured_kb"
+              ng-class="{'super-search-results__filter--active': c.isActiveFilter('featured_kb')}"
+              ng-click="c.setFilter('featured_kb')"
+              ng-disabled="c.isLoading">
+              <span ng-bind="c.search.filters.featured_kb.label"></span>
+              <span class="super-search-results__filter-count" ng-bind="c.search.filters.featured_kb.count"></span>
+            </button>
+            <button
+              type="button"
+              class="super-search-results__filter super-search-results__filter--subfilter"
+              ng-class="{'super-search-results__filter--active': c.isActiveFilter('knowledge_articles')}"
+              ng-click="c.setFilter('knowledge_articles')"
+              ng-disabled="c.isLoading">
+              Artikler <span class="super-search-results__filter-count" ng-bind="c.search.filters.knowledge_articles.count"></span>
+            </button>
+          </div>
           <button
             type="button"
             class="super-search-results__filter super-search-results__filter--news"
@@ -58,6 +74,14 @@
             ng-click="c.setFilter('news')"
             ng-disabled="c.isLoading">
             Nyheter <span class="super-search-results__filter-count" ng-bind="c.search.filters.news.count"></span>
+          </button>
+          <button
+            type="button"
+            class="super-search-results__filter super-search-results__filter--request"
+            ng-class="{'super-search-results__filter--active': c.isActiveFilter('catalog_item')}"
+            ng-click="c.setFilter('catalog_item')"
+            ng-disabled="c.isLoading">
+            Bestillinger og skjema <span class="super-search-results__filter-count" ng-bind="c.search.filters.catalog_item.count"></span>
           </button>
           <button
             type="button"
@@ -74,24 +98,6 @@
             ng-click="c.setFilter('topic')"
             ng-disabled="c.isLoading">
             Områdesider <span class="super-search-results__filter-count" ng-bind="c.search.filters.topic.count"></span>
-          </button>
-          <button
-            type="button"
-            class="super-search-results__filter super-search-results__filter--request"
-            ng-class="{'super-search-results__filter--active': c.isActiveFilter('catalog_item')}"
-            ng-click="c.setFilter('catalog_item')"
-            ng-disabled="c.isLoading">
-            Bestillinger og skjemaer <span class="super-search-results__filter-count" ng-bind="c.search.filters.catalog_item.count"></span>
-          </button>
-          <button
-            type="button"
-            class="super-search-results__filter super-search-results__filter--knowledge-base"
-            ng-if="c.search.filters.featured_kb"
-            ng-class="{'super-search-results__filter--active': c.isActiveFilter('featured_kb')}"
-            ng-click="c.setFilter('featured_kb')"
-            ng-disabled="c.isLoading">
-            <span ng-bind="c.search.filters.featured_kb.label"></span>
-            <span class="super-search-results__filter-count" ng-bind="c.search.filters.featured_kb.count"></span>
           </button>
         </div>
       </aside>

@@ -13,7 +13,7 @@
   var newsContentTypeId = options.news_content_type_id || '4880186c53202110a489ddeeff7b129a';
   var synonymDictionaryId = options.synonym_dictionary_id || '';
   var featuredKnowledgeBaseId = options.featured_knowledge_base_id || 'bb0370019f22120047a2d126c42e7073';
-  var featuredKnowledgeBaseLabel = options.featured_knowledge_base_label || 'Human Resources General Knowledge';
+  var featuredKnowledgeBaseLabel = options.featured_knowledge_base_label || 'Styrende dokumenter';
   var portalRecord = $sp.getPortalRecord();
   var portalSysId = options.portal_sys_id || (portalRecord ? portalRecord.getUniqueValue() : '');
   var resultFilter = 'all';
@@ -94,7 +94,11 @@
   function normalizeFilter(value) {
     var normalizedValue = String(value || 'all').toLowerCase();
 
-    if (normalizedValue === 'knowledge' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'sys_user' || normalizedValue === 'topic' || normalizedValue === 'featured_kb') {
+    if (normalizedValue === 'knowledge') {
+      return 'knowledge_articles';
+    }
+
+    if (normalizedValue === 'knowledge_articles' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'sys_user' || normalizedValue === 'topic' || normalizedValue === 'featured_kb') {
       return normalizedValue;
     }
 

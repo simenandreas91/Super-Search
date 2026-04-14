@@ -107,7 +107,7 @@
     "name": "featured_knowledge_base_label",
     "label": "Featured knowledge base label",
     "type": "string",
-    "default_value": "Human Resources General Knowledge",
+    "default_value": "Styrende dokumenter",
     "section": "Behavior",
     "hint": "User-facing label for the dedicated knowledge base filter."
   }

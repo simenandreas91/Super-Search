@@ -1683,7 +1683,11 @@ superSearchEngine.prototype = {
     _normalizeResultFilter: function(value) {
         var normalizedValue = this._normalizeQuery(value);
 
-        if (normalizedValue === 'knowledge' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'sys_user' || normalizedValue === 'topic' || normalizedValue === 'featured_kb' || normalizedValue === 'all') {
+        if (normalizedValue === 'knowledge') {
+            return 'knowledge_articles';
+        }
+
+        if (normalizedValue === 'knowledge_articles' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'sys_user' || normalizedValue === 'topic' || normalizedValue === 'featured_kb' || normalizedValue === 'all') {
             return normalizedValue;
         }
 
@@ -1701,6 +1705,10 @@ superSearchEngine.prototype = {
         for (index = 0; index < candidates.length; index++) {
             if (resultFilter === 'featured_kb' && candidates[index].isFeaturedKnowledgeBase) {
                 filteredCandidates.push(candidates[index]);
+            } else if (resultFilter === 'knowledge_articles' &&
+                candidates[index].resultType === 'knowledge' &&
+                candidates[index].isFeaturedKnowledgeBase !== true) {
+                filteredCandidates.push(candidates[index]);
             } else if (candidates[index].resultType === resultFilter) {
                 filteredCandidates.push(candidates[index]);
             }
@@ -1716,8 +1724,13 @@ superSearchEngine.prototype = {
                 label: 'Alle',
                 count: 0
             },
-            knowledge: {
-                id: 'knowledge',
+            knowledge_total: {
+                id: 'knowledge_total',
+                label: 'Kunnskapsartikler',
+                count: 0
+            },
+            knowledge_articles: {
+                id: 'knowledge_articles',
                 label: 'Artikler',
                 count: 0
             },
@@ -1738,7 +1751,7 @@ superSearchEngine.prototype = {
             },
             catalog_item: {
                 id: 'catalog_item',
-                label: 'Bestillinger og skjemaer',
+                label: 'Bestillinger og skjema',
                 count: 0
             }
         };
@@ -1767,6 +1780,16 @@ superSearchEngine.prototype = {
 
             if (filters[resultType]) {
                 filters[resultType].count += 1;
+            }
+
+            if (resultType === 'knowledge' && filters.knowledge_total) {
+                filters.knowledge_total.count += 1;
+            }
+
+            if (resultType === 'knowledge' &&
+                candidates[index].isFeaturedKnowledgeBase !== true &&
+                filters.knowledge_articles) {
+                filters.knowledge_articles.count += 1;
             }
 
             if (filters.featured_kb && candidates[index].isFeaturedKnowledgeBase) {
