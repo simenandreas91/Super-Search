@@ -15,11 +15,11 @@
   </div>
 
   <div class="alert alert-info" ng-if="!c.search.query">
-    Skriv inn et sok fra forsiden for a vise kunnskapsartikler, nyheter og bestillinger.
+    Skriv inn et sok fra forsiden for a vise kunnskapsartikler, nyheter, ansatte og bestillinger.
   </div>
 
   <div class="alert alert-warning" ng-if="c.search.query && !c.search.total && !c.isLoading && !c.search.filters.all.count">
-    Vi fant ingen publiserte kunnskapsartikler, nyheter eller bestillinger som matcher søket ditt.
+    Vi fant ingen publiserte kunnskapsartikler, nyheter, ansatte eller bestillinger som matcher soket ditt.
   </div>
 
   <div class="alert alert-info" ng-if="c.search.query && !c.search.total && !c.isLoading && c.search.filters.all.count">
@@ -61,6 +61,14 @@
           </button>
           <button
             type="button"
+            class="super-search-results__filter super-search-results__filter--user"
+            ng-class="{'super-search-results__filter--active': c.isActiveFilter('sys_user')}"
+            ng-click="c.setFilter('sys_user')"
+            ng-disabled="c.isLoading">
+            Ansatte <span class="super-search-results__filter-count" ng-bind="c.search.filters.sys_user.count"></span>
+          </button>
+          <button
+            type="button"
             class="super-search-results__filter super-search-results__filter--request"
             ng-class="{'super-search-results__filter--active': c.isActiveFilter('catalog_item')}"
             ng-click="c.setFilter('catalog_item')"
@@ -91,12 +99,16 @@
         <div class="super-search-results__list" ng-if="c.search.total">
           <article
             class="super-search-results__item"
-            ng-class="{'super-search-results__item--request': result.isRequestItem, 'super-search-results__item--news': result.isNewsItem}"
-            ng-repeat="result in c.search.results track by (result.resultType + ':' + result.sysId)">
+            ng-class="{'super-search-results__item--request': result.isRequestItem, 'super-search-results__item--news': result.isNewsItem, 'super-search-results__item--user': result.isUser}"
+            ng-click="c.openResult(result, $event)"
+            ng-keypress="c.handleResultKeypress($event, result)"
+            ng-repeat="result in c.search.results track by (result.resultType + ':' + result.sysId)"
+            role="link"
+            tabindex="0">
             <div class="super-search-results__item-top">
               <span
                 class="super-search-results__type-badge"
-                ng-class="{'super-search-results__type-badge--request': result.isRequestItem, 'super-search-results__type-badge--news': result.isNewsItem}"
+                ng-class="{'super-search-results__type-badge--request': result.isRequestItem, 'super-search-results__type-badge--news': result.isNewsItem, 'super-search-results__type-badge--user': result.isUser}"
                 ng-if="result.resultTypeLabel"
                 ng-bind="result.resultTypeLabel"></span>
               <span class="super-search-results__meta-chip" ng-if="result.number" ng-bind="result.number"></span>
@@ -109,6 +121,7 @@
                   'super-search-results__icon--knowledge': result.iconKey === 'knowledge',
                   'super-search-results__icon--news': result.iconKey === 'news',
                   'super-search-results__icon--request': result.iconKey === 'catalog_item',
+                  'super-search-results__icon--user': result.iconKey === 'sys_user',
                   'super-search-results__icon--featured-kb': result.iconKey === 'featured_kb'
                 }"
                 ng-if="result.iconClass"
@@ -120,10 +133,20 @@
                 <a ng-href="{{::result.url}}" ng-bind-html="::result.titleHtml"></a>
               </h3>
             </div>
+            <div class="super-search-results__person-details" ng-if="result.isUser">
+              <p class="super-search-results__person-field" ng-if="result.employeeTitle">
+                <span class="super-search-results__person-label">Stilling</span>
+                <span ng-bind-html="::result.employeeTitleHtml"></span>
+              </p>
+              <p class="super-search-results__person-field" ng-if="result.departmentName">
+                <span class="super-search-results__person-label">Avdeling</span>
+                <span ng-bind-html="::result.departmentNameHtml"></span>
+              </p>
+            </div>
             <div class="super-search-results__meta" ng-if="result.catalogName">
               <span class="super-search-results__meta-chip" ng-if="result.catalogName" ng-bind="result.catalogName"></span>
             </div>
-            <p class="super-search-results__snippet" ng-if="result.snippet" ng-bind-html="::result.snippetHtml"></p>
+            <p class="super-search-results__snippet" ng-if="result.snippet && !result.isUser" ng-bind-html="::result.snippetHtml"></p>
           </article>
         </div>
 

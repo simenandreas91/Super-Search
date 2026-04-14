@@ -94,7 +94,7 @@
   function normalizeFilter(value) {
     var normalizedValue = String(value || 'all').toLowerCase();
 
-    if (normalizedValue === 'knowledge' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'featured_kb') {
+    if (normalizedValue === 'knowledge' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'sys_user' || normalizedValue === 'featured_kb') {
       return normalizedValue;
     }
 

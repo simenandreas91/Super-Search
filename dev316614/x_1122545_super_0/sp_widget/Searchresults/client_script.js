@@ -1,4 +1,4 @@
-api.controller = function($location) {
+api.controller = function($location, $window) {
   var c = this;
 
   c.search = c.data.search;
@@ -109,6 +109,45 @@ api.controller = function($location) {
     }
 
     return Math.min(c.search.page * c.search.pageSize, c.search.total);
+  };
+
+  c.openResult = function(result, event) {
+    var currentNode;
+
+    if (c.isLoading || !result || !result.url) {
+      return;
+    }
+
+    if (event && (event.ctrlKey || event.metaKey || event.shiftKey || event.which === 2)) {
+      return;
+    }
+
+    currentNode = event && event.target;
+
+    while (currentNode) {
+      if (currentNode.tagName === 'A') {
+        return;
+      }
+
+      if (event && currentNode === event.currentTarget) {
+        break;
+      }
+
+      currentNode = currentNode.parentNode;
+    }
+
+    $window.location.href = result.url;
+  };
+
+  c.handleResultKeypress = function(event, result) {
+    var keyCode = event.which || event.keyCode;
+
+    if (keyCode !== 13 && keyCode !== 32) {
+      return;
+    }
+
+    event.preventDefault();
+    c.openResult(result, event);
   };
 
   c.updateUrl = function() {

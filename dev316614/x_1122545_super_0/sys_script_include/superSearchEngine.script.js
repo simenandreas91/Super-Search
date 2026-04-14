@@ -4,6 +4,7 @@ superSearchEngine.prototype = {
         this.KNOWLEDGE_TABLE = 'kb_knowledge';
         this.CATALOG_TABLE = 'sc_cat_item';
         this.NEWS_TABLE = 'sn_cd_content_base';
+        this.USER_TABLE = 'sys_user';
         this.SYNONYM_TABLE = 'ts_synonym_set';
         this.CONNECTED_CONTENT_TABLE = 'm2m_connected_content';
         this.PORTAL_TAXONOMY_TABLE = 'm2m_sp_portal_taxonomy';
@@ -19,6 +20,7 @@ superSearchEngine.prototype = {
         this.DEFAULT_ARTICLE_PAGE_ID = 'kb_article';
         this.DEFAULT_CATALOG_ITEM_PAGE_ID = 'sc_cat_item';
         this.DEFAULT_NEWS_PAGE_ID = 'cd_news_article';
+        this.DEFAULT_USER_PROFILE_PAGE_ID = 'user_profile';
         this.DEFAULT_NEWS_CONTENT_TYPE_ID = '4880186c53202110a489ddeeff7b129a';
         this.SNIPPET_LENGTH = 180;
     },
@@ -102,6 +104,7 @@ superSearchEngine.prototype = {
         var knowledgeRecord = new GlideRecordSecure(this.KNOWLEDGE_TABLE);
         var catalogRecord = new GlideRecordSecure(this.CATALOG_TABLE);
         var newsRecord = new GlideRecordSecure(this.NEWS_TABLE);
+        var userRecord = new GlideRecordSecure(this.USER_TABLE);
         var portalTaxonomyIds = this._getPortalTaxonomyIds(portalSysId);
         var currentDateTime = new GlideDateTime();
         var todayValue = currentDateTime.getValue().substring(0, 10);
@@ -110,6 +113,7 @@ superSearchEngine.prototype = {
             articlePageId: articlePageId,
             catalogItemPageId: catalogItemPageId,
             newsPageId: newsPageId,
+            userProfilePageId: this.DEFAULT_USER_PROFILE_PAGE_ID,
             newsContentTypeId: newsContentTypeId,
             portalSysId: portalSysId,
             portalTaxonomyIds: portalTaxonomyIds,
@@ -150,6 +154,15 @@ superSearchEngine.prototype = {
                 updatedOn: newsRecord.isValidField('sys_updated_on'),
                 active: newsRecord.isValidField('active'),
                 contentType: newsRecord.isValidField('content_type')
+            },
+            userFields: {
+                name: userRecord.isValidField('name'),
+                title: userRecord.isValidField('title'),
+                department: userRecord.isValidField('department'),
+                email: userRecord.isValidField('email'),
+                userName: userRecord.isValidField('user_name'),
+                updatedOn: userRecord.isValidField('sys_updated_on'),
+                active: userRecord.isValidField('active')
             }
         };
     },
@@ -418,10 +431,12 @@ superSearchEngine.prototype = {
         var knowledgeLimit = this._clampInteger(Math.ceil(candidateLimit * 0.5), candidateLimit, 1, candidateLimit);
         var catalogLimit = this._clampInteger(Math.ceil(candidateLimit * 0.3), candidateLimit, 1, candidateLimit);
         var newsLimit = this._clampInteger(Math.ceil(candidateLimit * 0.25), candidateLimit, 1, candidateLimit);
+        var userLimit = this._clampInteger(Math.ceil(candidateLimit * 0.35), candidateLimit, 1, candidateLimit);
         var knowledgeCandidates = this._getKnowledgeCandidates(context, queryProfile, knowledgeLimit, includeBodySearch);
         var catalogCandidates = this._getCatalogCandidates(context, queryProfile, catalogLimit, includeBodySearch);
         var newsCandidates = this._getNewsCandidates(context, queryProfile, newsLimit);
-        var mergedCandidates = knowledgeCandidates.concat(catalogCandidates, newsCandidates);
+        var userCandidates = this._getUserCandidates(context, queryProfile, userLimit);
+        var mergedCandidates = knowledgeCandidates.concat(catalogCandidates, newsCandidates, userCandidates);
 
         return this._scoreAndSortCandidates(mergedCandidates, queryProfile);
     },
@@ -478,6 +493,23 @@ superSearchEngine.prototype = {
             }
 
             this._collectNewsCandidatesForPass(context, passDefinitions[index], candidateLimit, candidateMap, candidates);
+        }
+
+        return candidates;
+    },
+
+    _getUserCandidates: function(context, queryProfile, candidateLimit) {
+        var candidateMap = {};
+        var candidates = [];
+        var passDefinitions = this._buildUserPassDefinitions(context, queryProfile);
+        var index;
+
+        for (index = 0; index < passDefinitions.length; index++) {
+            if (candidates.length >= candidateLimit) {
+                break;
+            }
+
+            this._collectUserCandidatesForPass(context, passDefinitions[index], candidateLimit, candidateMap, candidates);
         }
 
         return candidates;
@@ -545,6 +577,33 @@ superSearchEngine.prototype = {
 
         if (context.newsFields.title) {
             this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'title', ['=', 'STARTSWITH', 'CONTAINS']);
+        }
+
+        return passes;
+    },
+
+    _buildUserPassDefinitions: function(context, queryProfile) {
+        var passes = [];
+        var seenPasses = {};
+
+        if (context.userFields.name) {
+            this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'name', ['=', 'STARTSWITH', 'CONTAINS']);
+        }
+
+        if (context.userFields.title) {
+            this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'title', ['STARTSWITH', 'CONTAINS']);
+        }
+
+        if (context.userFields.department) {
+            this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'department.name', ['STARTSWITH', 'CONTAINS']);
+        }
+
+        if (context.userFields.userName) {
+            this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'user_name', ['=', 'STARTSWITH', 'CONTAINS']);
+        }
+
+        if (context.userFields.email) {
+            this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'email', ['STARTSWITH', 'CONTAINS']);
         }
 
         return passes;
@@ -663,6 +722,31 @@ superSearchEngine.prototype = {
         }
     },
 
+    _collectUserCandidatesForPass: function(context, passDefinition, candidateLimit, candidateMap, candidates) {
+        var record = new GlideRecordSecure(this.USER_TABLE);
+        var remainingCapacity = candidateLimit - candidates.length;
+
+        if (remainingCapacity <= 0) {
+            return;
+        }
+
+        this._applyUserBaseFilters(record, context);
+        this._applyPassDefinition(record, passDefinition);
+
+        record.orderBy('name');
+
+        if (context.userFields.updatedOn) {
+            record.orderByDesc('sys_updated_on');
+        }
+
+        record.setLimit(remainingCapacity);
+        record.query();
+
+        while (record.next() && candidates.length < candidateLimit) {
+            this._storeUserCandidate(record, context, candidateMap, candidates);
+        }
+    },
+
     _applyPassDefinition: function(record, passDefinition) {
         var condition;
         var index;
@@ -727,6 +811,12 @@ superSearchEngine.prototype = {
 
         if (context.newsFields.contentType && context.newsContentTypeId) {
             record.addQuery('content_type', context.newsContentTypeId);
+        }
+    },
+
+    _applyUserBaseFilters: function(record, context) {
+        if (context.userFields.active) {
+            record.addActiveQuery();
         }
     },
 
@@ -841,6 +931,38 @@ superSearchEngine.prototype = {
         candidates.push(candidate);
     },
 
+    _storeUserCandidate: function(record, context, candidateMap, candidates) {
+        var sysId = record.getUniqueValue();
+        var candidateKey = 'user:' + sysId;
+        var candidate;
+
+        if (!sysId || candidateMap[candidateKey]) {
+            return;
+        }
+
+        candidate = {
+            resultKey: 'user:' + sysId,
+            resultType: 'sys_user',
+            resultTypeLabel: 'Ansatt',
+            sysId: sysId,
+            number: '',
+            title: context.userFields.name ? this._safeString(record.getDisplayValue('name') || record.getValue('name')) : '',
+            metaText: this._buildUserMetadataText(record, context),
+            bodyText: '',
+            kbName: '',
+            categoryName: '',
+            language: '',
+            updatedOn: context.userFields.updatedOn ? this._safeString(record.getValue('sys_updated_on')) : '',
+            catalogName: '',
+            employeeTitle: context.userFields.title ? this._safeString(record.getValue('title')) : '',
+            departmentName: context.userFields.department ? this._safeString(record.getDisplayValue('department')) : '',
+            url: this._buildUserUrl(context.userProfilePageId, sysId)
+        };
+
+        candidateMap[candidateKey] = candidate;
+        candidates.push(candidate);
+    },
+
     _buildKnowledgeMetadataText: function(record, context) {
         var parts = [];
 
@@ -877,6 +999,28 @@ superSearchEngine.prototype = {
         return parts.join(' ');
     },
 
+    _buildUserMetadataText: function(record, context) {
+        var parts = [];
+
+        if (context.userFields.title) {
+            parts.push(this._safeString(record.getValue('title')));
+        }
+
+        if (context.userFields.department) {
+            parts.push(this._safeString(record.getDisplayValue('department')));
+        }
+
+        if (context.userFields.email) {
+            parts.push(this._safeString(record.getValue('email')));
+        }
+
+        if (context.userFields.userName) {
+            parts.push(this._safeString(record.getValue('user_name')));
+        }
+
+        return parts.join(' ');
+    },
+
     _scoreAndSortCandidates: function(candidates, queryProfile) {
         var index;
         var candidate;
@@ -890,6 +1034,8 @@ superSearchEngine.prototype = {
                 candidate.score += 20;
             } else if (candidate.resultType === 'news') {
                 candidate.score += 10;
+            } else if (candidate.resultType === 'sys_user') {
+                candidate.score += 15;
             }
 
             if (candidate.score > 0) {
@@ -1022,13 +1168,14 @@ superSearchEngine.prototype = {
         for (index = 0; index < candidates.length; index++) {
             candidate = candidates[index];
             iconInfo = this._getResultIconInfo(candidate);
-            snippet = this._buildSnippet(candidate, highlightTerms);
+            snippet = candidate.resultType === 'sys_user' ? '' : this._buildSnippet(candidate, highlightTerms);
             results.push({
                 sysId: candidate.sysId,
                 resultType: candidate.resultType,
                 resultTypeLabel: candidate.resultTypeLabel,
                 isRequestItem: candidate.resultType === 'catalog_item',
                 isNewsItem: candidate.resultType === 'news',
+                isUser: candidate.resultType === 'sys_user',
                 isFeaturedKnowledgeBase: candidate.isFeaturedKnowledgeBase === true,
                 iconKey: iconInfo.key,
                 iconClass: iconInfo.className,
@@ -1040,6 +1187,10 @@ superSearchEngine.prototype = {
                 snippetHtml: this._highlightText(snippet, highlightTerms),
                 kbName: candidate.kbName,
                 catalogName: candidate.catalogName || '',
+                employeeTitle: candidate.employeeTitle || '',
+                employeeTitleHtml: this._highlightText(candidate.employeeTitle || '', highlightTerms),
+                departmentName: candidate.departmentName || '',
+                departmentNameHtml: this._highlightText(candidate.departmentName || '', highlightTerms),
                 categoryName: candidate.categoryName,
                 language: candidate.language,
                 url: candidate.url
@@ -1071,6 +1222,14 @@ superSearchEngine.prototype = {
                 key: 'catalog_item',
                 className: 'fa-clipboard',
                 label: candidate.resultTypeLabel || 'Bestilling'
+            };
+        }
+
+        if (candidate.resultType === 'sys_user') {
+            return {
+                key: 'sys_user',
+                className: 'fa-user',
+                label: candidate.resultTypeLabel || 'Ansatt'
             };
         }
 
@@ -1312,6 +1471,10 @@ superSearchEngine.prototype = {
         return '?id=' + encodeURIComponent(newsPageId) + '&sys_id=' + encodeURIComponent(sysId);
     },
 
+    _buildUserUrl: function(userProfilePageId, sysId) {
+        return '?id=' + encodeURIComponent(userProfilePageId) + '&sys_id=' + encodeURIComponent(sysId);
+    },
+
     _getConnectedCatalogItemIdMap: function(candidates, context) {
         var candidateIds = [];
         var connectedItemMap = {};
@@ -1389,7 +1552,7 @@ superSearchEngine.prototype = {
     _normalizeResultFilter: function(value) {
         var normalizedValue = this._normalizeQuery(value);
 
-        if (normalizedValue === 'knowledge' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'featured_kb' || normalizedValue === 'all') {
+        if (normalizedValue === 'knowledge' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'sys_user' || normalizedValue === 'featured_kb' || normalizedValue === 'all') {
             return normalizedValue;
         }
 
@@ -1430,6 +1593,11 @@ superSearchEngine.prototype = {
             news: {
                 id: 'news',
                 label: 'Nyheter',
+                count: 0
+            },
+            sys_user: {
+                id: 'sys_user',
+                label: 'Ansatte',
                 count: 0
             },
             catalog_item: {
