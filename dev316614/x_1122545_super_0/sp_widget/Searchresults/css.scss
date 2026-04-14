@@ -185,70 +185,30 @@
   width: calc(100% - 12px);
 }
 
-.super-search-results__filter--request {
-  background: var(--super-search-results-request-soft);
-  border-color: var(--super-search-results-request-border);
-  color: #345846;
-}
-
-.super-search-results__filter--request:hover,
-.super-search-results__filter--request:focus,
 .super-search-results__filter--request.super-search-results__filter--active {
   background: #e7efe9;
   border-color: #bcc9bf;
   color: #284637;
 }
 
-.super-search-results__filter--news {
-  background: var(--super-search-results-news-soft);
-  border-color: var(--super-search-results-news-border);
-  color: #73583b;
-}
-
-.super-search-results__filter--news:hover,
-.super-search-results__filter--news:focus,
 .super-search-results__filter--news.super-search-results__filter--active {
   background: #f0e9de;
   border-color: #cbbb9f;
   color: #5f472d;
 }
 
-.super-search-results__filter--user {
-  background: var(--super-search-results-user-soft);
-  border-color: var(--super-search-results-user-border);
-  color: #1f4f7a;
-}
-
-.super-search-results__filter--user:hover,
-.super-search-results__filter--user:focus,
 .super-search-results__filter--user.super-search-results__filter--active {
   background: #e4edf9;
   border-color: #b8cae5;
   color: #173d60;
 }
 
-.super-search-results__filter--topic {
-  background: var(--super-search-results-topic-soft);
-  border-color: var(--super-search-results-topic-border);
-  color: #2a6140;
-}
-
-.super-search-results__filter--topic:hover,
-.super-search-results__filter--topic:focus,
 .super-search-results__filter--topic.super-search-results__filter--active {
   background: #e3f0e6;
   border-color: #b9d0bf;
   color: #1e4a30;
 }
 
-.super-search-results__filter--knowledge-base {
-  background: #f0f4f7;
-  border-color: #ccd5dc;
-  color: #3f596a;
-}
-
-.super-search-results__filter--knowledge-base:hover,
-.super-search-results__filter--knowledge-base:focus,
 .super-search-results__filter--knowledge-base.super-search-results__filter--active {
   background: #e7edf2;
   border-color: #b9c6cf;

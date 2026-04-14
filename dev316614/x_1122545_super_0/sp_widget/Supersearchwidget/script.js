@@ -1,6 +1,7 @@
 (function() {
   var currentUser = gs.getUser();
   var firstName = '';
+  var initialFilter = normalizeFilter($sp.getParameter('filter'));
 
   if (currentUser && currentUser.getFirstName) {
     firstName = currentUser.getFirstName() || '';
@@ -13,6 +14,52 @@
     compactMode: String(options.compact_mode) === 'true'
   };
 
+  data.filterOptions = [
+    {
+      id: 'all',
+      label: 'Alle'
+    },
+    {
+      id: 'featured_kb',
+      label: 'Styrende dokumenter'
+    },
+    {
+      id: 'knowledge_articles',
+      label: 'Artikler'
+    },
+    {
+      id: 'news',
+      label: 'Nyheter'
+    },
+    {
+      id: 'catalog_item',
+      label: 'Bestillinger og skjema'
+    },
+    {
+      id: 'sys_user',
+      label: 'Ansatte'
+    },
+    {
+      id: 'topic',
+      label: 'Områdesider'
+    }
+  ];
+
   data.greetingName = firstName;
   data.initialQuery = $sp.getParameter('q') || '';
+  data.initialFilter = initialFilter;
+
+  function normalizeFilter(value) {
+    var normalizedValue = String(value || 'all').toLowerCase();
+
+    if (normalizedValue === 'knowledge') {
+      return 'knowledge_articles';
+    }
+
+    if (normalizedValue === 'knowledge_articles' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'sys_user' || normalizedValue === 'topic' || normalizedValue === 'featured_kb') {
+      return normalizedValue;
+    }
+
+    return 'all';
+  }
 })();
