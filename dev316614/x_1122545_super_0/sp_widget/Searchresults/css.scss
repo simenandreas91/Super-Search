@@ -13,6 +13,8 @@
   --super-search-results-news-border: #d9ccba;
   --super-search-results-user-soft: #eef3fb;
   --super-search-results-user-border: #c7d7ec;
+  --super-search-results-topic-soft: #edf7ef;
+  --super-search-results-topic-border: #c8dccd;
   background: var(--super-search-results-surface);
   border: 1px solid var(--super-search-results-border);
   border-radius: 14px;
@@ -193,6 +195,20 @@
   color: #173d60;
 }
 
+.super-search-results__filter--topic {
+  background: var(--super-search-results-topic-soft);
+  border-color: var(--super-search-results-topic-border);
+  color: #2a6140;
+}
+
+.super-search-results__filter--topic:hover,
+.super-search-results__filter--topic:focus,
+.super-search-results__filter--topic.super-search-results__filter--active {
+  background: #e3f0e6;
+  border-color: #b9d0bf;
+  color: #1e4a30;
+}
+
 .super-search-results__filter--knowledge-base {
   background: #f0f4f7;
   border-color: #ccd5dc;
@@ -242,6 +258,11 @@
   border-color: var(--super-search-results-user-border);
 }
 
+.super-search-results__item--topic {
+  background: var(--super-search-results-topic-soft);
+  border-color: var(--super-search-results-topic-border);
+}
+
 .super-search-results__item:hover,
 .super-search-results__item:focus {
   border-color: #b8c4ce;
@@ -261,6 +282,11 @@
 .super-search-results__item--user:hover,
 .super-search-results__item--user:focus {
   border-color: #b8cae5;
+}
+
+.super-search-results__item--topic:hover,
+.super-search-results__item--topic:focus {
+  border-color: #b9d0bf;
 }
 
 .super-search-results__item-top {
@@ -309,6 +335,12 @@
   color: #1f4f7a;
 }
 
+.super-search-results__icon--topic {
+  background: var(--super-search-results-topic-soft);
+  border-color: var(--super-search-results-topic-border);
+  color: #2a6140;
+}
+
 .super-search-results__icon--featured-kb {
   background: #f6ede2;
   border-color: #dec4a4;
@@ -342,6 +374,12 @@
   background: var(--super-search-results-user-soft);
   border-color: var(--super-search-results-user-border);
   color: #1f4f7a;
+}
+
+.super-search-results__type-badge--topic {
+  background: var(--super-search-results-topic-soft);
+  border-color: var(--super-search-results-topic-border);
+  color: #2a6140;
 }
 
 .super-search-results__item-title {

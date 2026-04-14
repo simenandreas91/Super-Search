@@ -5,6 +5,7 @@ superSearchEngine.prototype = {
         this.CATALOG_TABLE = 'sc_cat_item';
         this.NEWS_TABLE = 'sn_cd_content_base';
         this.USER_TABLE = 'sys_user';
+        this.TOPIC_TABLE = 'topic';
         this.SYNONYM_TABLE = 'ts_synonym_set';
         this.CONNECTED_CONTENT_TABLE = 'm2m_connected_content';
         this.PORTAL_TAXONOMY_TABLE = 'm2m_sp_portal_taxonomy';
@@ -21,6 +22,7 @@ superSearchEngine.prototype = {
         this.DEFAULT_CATALOG_ITEM_PAGE_ID = 'sc_cat_item';
         this.DEFAULT_NEWS_PAGE_ID = 'cd_news_article';
         this.DEFAULT_USER_PROFILE_PAGE_ID = 'user_profile';
+        this.DEFAULT_TOPIC_PAGE_ID = 'emp_taxonomy_topic';
         this.DEFAULT_NEWS_CONTENT_TYPE_ID = '4880186c53202110a489ddeeff7b129a';
         this.SNIPPET_LENGTH = 180;
     },
@@ -105,6 +107,7 @@ superSearchEngine.prototype = {
         var catalogRecord = new GlideRecordSecure(this.CATALOG_TABLE);
         var newsRecord = new GlideRecordSecure(this.NEWS_TABLE);
         var userRecord = new GlideRecordSecure(this.USER_TABLE);
+        var topicRecord = new GlideRecordSecure(this.TOPIC_TABLE);
         var portalTaxonomyIds = this._getPortalTaxonomyIds(portalSysId);
         var currentDateTime = new GlideDateTime();
         var todayValue = currentDateTime.getValue().substring(0, 10);
@@ -114,6 +117,7 @@ superSearchEngine.prototype = {
             catalogItemPageId: catalogItemPageId,
             newsPageId: newsPageId,
             userProfilePageId: this.DEFAULT_USER_PROFILE_PAGE_ID,
+            topicPageId: this.DEFAULT_TOPIC_PAGE_ID,
             newsContentTypeId: newsContentTypeId,
             portalSysId: portalSysId,
             portalTaxonomyIds: portalTaxonomyIds,
@@ -163,6 +167,13 @@ superSearchEngine.prototype = {
                 userName: userRecord.isValidField('user_name'),
                 updatedOn: userRecord.isValidField('sys_updated_on'),
                 active: userRecord.isValidField('active')
+            },
+            topicFields: {
+                name: topicRecord.isValidField('name'),
+                description: topicRecord.isValidField('description'),
+                taxonomy: topicRecord.isValidField('taxonomy'),
+                updatedOn: topicRecord.isValidField('sys_updated_on'),
+                active: topicRecord.isValidField('active')
             }
         };
     },
@@ -432,11 +443,13 @@ superSearchEngine.prototype = {
         var catalogLimit = this._clampInteger(Math.ceil(candidateLimit * 0.3), candidateLimit, 1, candidateLimit);
         var newsLimit = this._clampInteger(Math.ceil(candidateLimit * 0.25), candidateLimit, 1, candidateLimit);
         var userLimit = this._clampInteger(Math.ceil(candidateLimit * 0.35), candidateLimit, 1, candidateLimit);
+        var topicLimit = this._clampInteger(Math.ceil(candidateLimit * 0.25), candidateLimit, 1, candidateLimit);
         var knowledgeCandidates = this._getKnowledgeCandidates(context, queryProfile, knowledgeLimit, includeBodySearch);
         var catalogCandidates = this._getCatalogCandidates(context, queryProfile, catalogLimit, includeBodySearch);
         var newsCandidates = this._getNewsCandidates(context, queryProfile, newsLimit);
         var userCandidates = this._getUserCandidates(context, queryProfile, userLimit);
-        var mergedCandidates = knowledgeCandidates.concat(catalogCandidates, newsCandidates, userCandidates);
+        var topicCandidates = this._getTopicCandidates(context, queryProfile, topicLimit, includeBodySearch);
+        var mergedCandidates = knowledgeCandidates.concat(catalogCandidates, newsCandidates, userCandidates, topicCandidates);
 
         return this._scoreAndSortCandidates(mergedCandidates, queryProfile);
     },
@@ -510,6 +523,29 @@ superSearchEngine.prototype = {
             }
 
             this._collectUserCandidatesForPass(context, passDefinitions[index], candidateLimit, candidateMap, candidates);
+        }
+
+        return candidates;
+    },
+
+    _getTopicCandidates: function(context, queryProfile, candidateLimit, includeBodySearch) {
+        var candidateMap = {};
+        var candidates = [];
+        var passDefinitions;
+        var index;
+
+        if (context.portalTaxonomyIds.length === 0) {
+            return candidates;
+        }
+
+        passDefinitions = this._buildTopicPassDefinitions(context, queryProfile, includeBodySearch);
+
+        for (index = 0; index < passDefinitions.length; index++) {
+            if (candidates.length >= candidateLimit) {
+                break;
+            }
+
+            this._collectTopicCandidatesForPass(context, passDefinitions[index], candidateLimit, candidateMap, candidates);
         }
 
         return candidates;
@@ -604,6 +640,21 @@ superSearchEngine.prototype = {
 
         if (context.userFields.email) {
             this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'email', ['STARTSWITH', 'CONTAINS']);
+        }
+
+        return passes;
+    },
+
+    _buildTopicPassDefinitions: function(context, queryProfile, includeBodySearch) {
+        var passes = [];
+        var seenPasses = {};
+
+        if (context.topicFields.name) {
+            this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'name', ['=', 'STARTSWITH', 'CONTAINS']);
+        }
+
+        if (includeBodySearch && context.topicFields.description) {
+            this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'description', ['CONTAINS']);
         }
 
         return passes;
@@ -747,6 +798,29 @@ superSearchEngine.prototype = {
         }
     },
 
+    _collectTopicCandidatesForPass: function(context, passDefinition, candidateLimit, candidateMap, candidates) {
+        var record = new GlideRecordSecure(this.TOPIC_TABLE);
+        var remainingCapacity = candidateLimit - candidates.length;
+
+        if (remainingCapacity <= 0) {
+            return;
+        }
+
+        this._applyTopicBaseFilters(record, context);
+        this._applyPassDefinition(record, passDefinition);
+
+        if (context.topicFields.updatedOn) {
+            record.orderByDesc('sys_updated_on');
+        }
+
+        record.setLimit(remainingCapacity);
+        record.query();
+
+        while (record.next() && candidates.length < candidateLimit) {
+            this._storeTopicCandidate(record, context, candidateMap, candidates);
+        }
+    },
+
     _applyPassDefinition: function(record, passDefinition) {
         var condition;
         var index;
@@ -817,6 +891,16 @@ superSearchEngine.prototype = {
     _applyUserBaseFilters: function(record, context) {
         if (context.userFields.active) {
             record.addActiveQuery();
+        }
+    },
+
+    _applyTopicBaseFilters: function(record, context) {
+        if (context.topicFields.active) {
+            record.addActiveQuery();
+        }
+
+        if (context.topicFields.taxonomy && context.portalTaxonomyIds.length > 0) {
+            record.addQuery('taxonomy', 'IN', context.portalTaxonomyIds.join(','));
         }
     },
 
@@ -963,6 +1047,38 @@ superSearchEngine.prototype = {
         candidates.push(candidate);
     },
 
+    _storeTopicCandidate: function(record, context, candidateMap, candidates) {
+        var sysId = record.getUniqueValue();
+        var candidateKey = 'topic:' + sysId;
+        var candidate;
+
+        if (!sysId || candidateMap[candidateKey]) {
+            return;
+        }
+
+        candidate = {
+            resultKey: 'topic:' + sysId,
+            resultType: 'topic',
+            resultTypeLabel: 'Områdeside',
+            sysId: sysId,
+            number: '',
+            title: context.topicFields.name ? this._safeString(record.getDisplayValue('name') || record.getValue('name')) : '',
+            metaText: '',
+            bodyText: context.topicFields.description ? this._safeString(record.getValue('description')) : '',
+            kbName: '',
+            categoryName: '',
+            language: '',
+            updatedOn: context.topicFields.updatedOn ? this._safeString(record.getValue('sys_updated_on')) : '',
+            catalogName: '',
+            employeeTitle: '',
+            departmentName: '',
+            url: this._buildTopicUrl(context.topicPageId, sysId)
+        };
+
+        candidateMap[candidateKey] = candidate;
+        candidates.push(candidate);
+    },
+
     _buildKnowledgeMetadataText: function(record, context) {
         var parts = [];
 
@@ -1036,6 +1152,8 @@ superSearchEngine.prototype = {
                 candidate.score += 10;
             } else if (candidate.resultType === 'sys_user') {
                 candidate.score += 15;
+            } else if (candidate.resultType === 'topic') {
+                candidate.score += 12;
             }
 
             if (candidate.score > 0) {
@@ -1176,6 +1294,7 @@ superSearchEngine.prototype = {
                 isRequestItem: candidate.resultType === 'catalog_item',
                 isNewsItem: candidate.resultType === 'news',
                 isUser: candidate.resultType === 'sys_user',
+                isTopic: candidate.resultType === 'topic',
                 isFeaturedKnowledgeBase: candidate.isFeaturedKnowledgeBase === true,
                 iconKey: iconInfo.key,
                 iconClass: iconInfo.className,
@@ -1230,6 +1349,14 @@ superSearchEngine.prototype = {
                 key: 'sys_user',
                 className: 'fa-user',
                 label: candidate.resultTypeLabel || 'Ansatt'
+            };
+        }
+
+        if (candidate.resultType === 'topic') {
+            return {
+                key: 'topic',
+                className: 'fa-sitemap',
+                label: candidate.resultTypeLabel || 'Områdeside'
             };
         }
 
@@ -1475,6 +1602,10 @@ superSearchEngine.prototype = {
         return '?id=' + encodeURIComponent(userProfilePageId) + '&sys_id=' + encodeURIComponent(sysId);
     },
 
+    _buildTopicUrl: function(topicPageId, sysId) {
+        return '?id=' + encodeURIComponent(topicPageId) + '&topic_id=' + encodeURIComponent(sysId);
+    },
+
     _getConnectedCatalogItemIdMap: function(candidates, context) {
         var candidateIds = [];
         var connectedItemMap = {};
@@ -1552,7 +1683,7 @@ superSearchEngine.prototype = {
     _normalizeResultFilter: function(value) {
         var normalizedValue = this._normalizeQuery(value);
 
-        if (normalizedValue === 'knowledge' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'sys_user' || normalizedValue === 'featured_kb' || normalizedValue === 'all') {
+        if (normalizedValue === 'knowledge' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'sys_user' || normalizedValue === 'topic' || normalizedValue === 'featured_kb' || normalizedValue === 'all') {
             return normalizedValue;
         }
 
@@ -1598,6 +1729,11 @@ superSearchEngine.prototype = {
             sys_user: {
                 id: 'sys_user',
                 label: 'Ansatte',
+                count: 0
+            },
+            topic: {
+                id: 'topic',
+                label: 'Områdesider',
                 count: 0
             },
             catalog_item: {
