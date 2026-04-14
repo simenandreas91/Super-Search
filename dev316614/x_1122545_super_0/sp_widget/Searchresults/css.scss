@@ -171,7 +171,12 @@
 .super-search-results__filter:focus {
   background: #ffffff;
   border-color: #b5c4cf;
-  color: var(--super-search-results-accent);
+  color: var(--super-search-results-text);
+}
+
+.super-search-results__filter:focus {
+  box-shadow: 0 0 0 3px rgba(8, 60, 94, 0.12);
+  outline: none;
 }
 
 .super-search-results__filter--active {
