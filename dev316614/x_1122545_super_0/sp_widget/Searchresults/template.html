@@ -3,10 +3,13 @@
     <div class="super-search-results__heading-row">
       <div>
         <h2 class="super-search-results__title">Søkeresultater</h2>
-        <p class="super-search-results__summary" ng-if="c.search.total">
+        <p class="super-search-results__summary" ng-if="c.isLoading">
+          Søker etter <span ng-bind="c.search.querySummaryLabel"></span>
+        </p>
+        <p class="super-search-results__summary" ng-if="c.search.total && !c.isLoading">
           {{c.search.total}} treff for <span ng-bind="c.search.querySummaryLabel"></span>
         </p>
-        <p class="super-search-results__summary" ng-if="!c.search.total">
+        <p class="super-search-results__summary" ng-if="!c.search.total && !c.isLoading">
           Ingen treff for <span ng-bind="c.search.querySummaryLabel"></span>
         </p>
       </div>

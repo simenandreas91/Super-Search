@@ -141,6 +141,7 @@ api.controller = function($window) {
       resultFilter: nextFilter
     }).then(function(response) {
       c.search = c.prepareSearch(response.data.search);
+      c.data.config.deferInitialQuery = false;
       c.updateUrl();
       c.isLoading = false;
     }, function() {
@@ -294,4 +295,13 @@ api.controller = function($window) {
   };
 
   c.search = c.prepareSearch(c.data.search);
+
+  if (c.data.config.deferInitialQuery && c.search && c.search.query) {
+    c.isLoading = true;
+    c.executeSearch({
+      query: c.search.query,
+      page: c.search.page,
+      resultFilter: c.search.activeFilter
+    });
+  }
 };

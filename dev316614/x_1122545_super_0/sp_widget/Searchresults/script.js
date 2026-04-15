@@ -39,39 +39,114 @@
 
   data.config = {
     pageSize: pageSize,
-    articlePageId: articlePageId,
-    catalogItemPageId: catalogItemPageId,
-    newsPageId: newsPageId,
-    newsContentTypeId: newsContentTypeId,
-    shortQueryLength: shortQueryLength,
-    shortQueryCandidateLimit: shortQueryCandidateLimit,
-    shortQueryResultLimit: shortQueryResultLimit,
-    synonymDictionaryId: synonymDictionaryId,
-    portalSysId: portalSysId,
-    featuredKnowledgeBaseId: featuredKnowledgeBaseId,
-    featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,
-    resultFilter: resultFilter
-  };
-
-  data.search = searchEngine.searchKnowledge({
-    query: query,
-    page: page,
-    pageSize: pageSize,
     candidateLimit: candidateLimit,
     includeBodySearch: includeBodySearch,
-    shortQueryLength: shortQueryLength,
-    shortQueryCandidateLimit: shortQueryCandidateLimit,
-    shortQueryResultLimit: shortQueryResultLimit,
     articlePageId: articlePageId,
     catalogItemPageId: catalogItemPageId,
     newsPageId: newsPageId,
     newsContentTypeId: newsContentTypeId,
+    shortQueryLength: shortQueryLength,
+    shortQueryCandidateLimit: shortQueryCandidateLimit,
+    shortQueryResultLimit: shortQueryResultLimit,
     synonymDictionaryId: synonymDictionaryId,
     portalSysId: portalSysId,
     featuredKnowledgeBaseId: featuredKnowledgeBaseId,
     featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,
-    resultFilter: resultFilter
-  });
+    resultFilter: resultFilter,
+    deferInitialQuery: !input
+  };
+
+  if (input && typeof input.query !== 'undefined') {
+    data.search = searchEngine.searchKnowledge({
+      query: query,
+      page: page,
+      pageSize: pageSize,
+      candidateLimit: candidateLimit,
+      includeBodySearch: includeBodySearch,
+      shortQueryLength: shortQueryLength,
+      shortQueryCandidateLimit: shortQueryCandidateLimit,
+      shortQueryResultLimit: shortQueryResultLimit,
+      articlePageId: articlePageId,
+      catalogItemPageId: catalogItemPageId,
+      newsPageId: newsPageId,
+      newsContentTypeId: newsContentTypeId,
+      synonymDictionaryId: synonymDictionaryId,
+      portalSysId: portalSysId,
+      featuredKnowledgeBaseId: featuredKnowledgeBaseId,
+      featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,
+      resultFilter: resultFilter
+    });
+  } else {
+    data.search = buildInitialSearch(query, page, pageSize, resultFilter, featuredKnowledgeBaseId, featuredKnowledgeBaseLabel);
+  }
+
+  function buildInitialSearch(initialQuery, initialPage, initialPageSize, initialFilter, featuredKbId, featuredKbLabel) {
+    return {
+      query: initialQuery,
+      normalizedQuery: '',
+      querySummaryLabel: initialQuery ? '"' + initialQuery + '"' : '""',
+      hasSynonymExpansion: false,
+      activeFilter: initialFilter,
+      filters: buildEmptyFilters(featuredKbId, featuredKbLabel),
+      page: initialPage,
+      pageSize: initialPageSize,
+      total: 0,
+      totalPages: 0,
+      hasMore: false,
+      allResults: [],
+      results: []
+    };
+  }
+
+  function buildEmptyFilters(featuredKbId, featuredKbLabel) {
+    var filters = {
+      all: {
+        id: 'all',
+        label: 'Alle',
+        count: 0
+      },
+      knowledge_total: {
+        id: 'knowledge_total',
+        label: 'Kunnskapsartikler',
+        count: 0
+      },
+      knowledge_articles: {
+        id: 'knowledge_articles',
+        label: 'Artikler',
+        count: 0
+      },
+      news: {
+        id: 'news',
+        label: 'Nyheter',
+        count: 0
+      },
+      sys_user: {
+        id: 'sys_user',
+        label: 'Ansatte',
+        count: 0
+      },
+      topic: {
+        id: 'topic',
+        label: 'Områdesider',
+        count: 0
+      },
+      catalog_item: {
+        id: 'catalog_item',
+        label: 'Bestillinger og skjema',
+        count: 0
+      }
+    };
+
+    if (featuredKbId && featuredKbLabel) {
+      filters.featured_kb = {
+        id: 'featured_kb',
+        label: featuredKbLabel,
+        count: 0
+      };
+    }
+
+    return filters;
+  }
 
   function parseIntegerOption(value, defaultValue) {
     var parsedValue = parseInt(value, 10);
