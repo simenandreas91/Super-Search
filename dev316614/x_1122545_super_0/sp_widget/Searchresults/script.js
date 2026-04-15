@@ -14,6 +14,7 @@
   var synonymDictionaryId = options.synonym_dictionary_id || '';
   var featuredKnowledgeBaseId = options.featured_knowledge_base_id || 'bb0370019f22120047a2d126c42e7073';
   var featuredKnowledgeBaseLabel = options.featured_knowledge_base_label || 'Styrende dokumenter';
+  var featuredTopicId = options.featured_topic_id || '';
   var portalRecord = $sp.getPortalRecord();
   var portalSysId = options.portal_sys_id || (portalRecord ? portalRecord.getUniqueValue() : '');
   var resultFilter = 'all';
@@ -52,6 +53,7 @@
     portalSysId: portalSysId,
     featuredKnowledgeBaseId: featuredKnowledgeBaseId,
     featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,
+    featuredTopicId: featuredTopicId,
     resultFilter: resultFilter,
     deferInitialQuery: !input
   };
@@ -74,6 +76,7 @@
       portalSysId: portalSysId,
       featuredKnowledgeBaseId: featuredKnowledgeBaseId,
       featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,
+      featuredTopicId: featuredTopicId,
       resultFilter: resultFilter
     });
   } else {
@@ -122,7 +125,7 @@
       },
       sys_user: {
         id: 'sys_user',
-        label: 'Ansatte',
+        label: 'Finn kollegaen min',
         count: 0
       },
       topic: {

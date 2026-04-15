@@ -2,7 +2,7 @@
   --super-search-results-surface: #ffffff;
   --super-search-results-surface-soft: #ffffff;
   --super-search-results-border: #c7cfca;
-  --super-search-results-border-soft: #d7ddd9;
+  --super-search-results-border-soft: #c4cec8;
   --super-search-results-text: #191b21;
   --super-search-results-muted: #5b676d;
   --super-search-results-accent: #083c5e;
@@ -241,23 +241,23 @@
 }
 
 .super-search-results__item--request {
-  background: var(--super-search-results-request-soft);
-  border-color: var(--super-search-results-request-border);
+  background: var(--super-search-results-surface-soft);
+  border-color: var(--super-search-results-border-soft);
 }
 
 .super-search-results__item--news {
-  background: var(--super-search-results-news-soft);
-  border-color: var(--super-search-results-news-border);
+  background: var(--super-search-results-surface-soft);
+  border-color: var(--super-search-results-border-soft);
 }
 
 .super-search-results__item--user {
-  background: var(--super-search-results-user-soft);
-  border-color: var(--super-search-results-user-border);
+  background: var(--super-search-results-surface-soft);
+  border-color: var(--super-search-results-border-soft);
 }
 
 .super-search-results__item--topic {
-  background: var(--super-search-results-topic-soft);
-  border-color: var(--super-search-results-topic-border);
+  background: var(--super-search-results-surface-soft);
+  border-color: var(--super-search-results-border-soft);
 }
 
 .super-search-results__item:hover,
@@ -269,21 +269,21 @@
 }
 
 .super-search-results__item--request:hover {
-  border-color: #bcc9bf;
+  border-color: #b8c4ce;
 }
 
 .super-search-results__item--news:hover {
-  border-color: #cbbb9f;
+  border-color: #b8c4ce;
 }
 
 .super-search-results__item--user:hover,
 .super-search-results__item--user:focus {
-  border-color: #b8cae5;
+  border-color: #b8c4ce;
 }
 
 .super-search-results__item--topic:hover,
 .super-search-results__item--topic:focus {
-  border-color: #b9d0bf;
+  border-color: #b8c4ce;
 }
 
 .super-search-results__item-top {

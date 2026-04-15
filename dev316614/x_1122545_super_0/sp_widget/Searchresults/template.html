@@ -96,7 +96,7 @@
             ng-class="{'super-search-results__filter--active': c.isActiveFilter('sys_user')}"
             ng-click="c.setFilter('sys_user')"
             ng-disabled="c.isLoading">
-            Ansatte <span class="super-search-results__filter-count" ng-bind="c.search.filters.sys_user.count"></span>
+            Finn kollegaen min <span class="super-search-results__filter-count" ng-bind="c.search.filters.sys_user.count"></span>
           </button>
           <button
             type="button"
@@ -161,7 +161,7 @@
                 <span ng-bind-html="::result.employeeTitleHtml"></span>
               </p>
               <p class="super-search-results__person-field" ng-if="result.departmentName">
-                <span class="super-search-results__person-label">Avdeling</span>
+                <span class="super-search-results__person-label">Gruppe/program</span>
                 <span ng-bind-html="::result.departmentNameHtml"></span>
               </p>
             </div>

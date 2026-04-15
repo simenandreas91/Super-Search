@@ -41,7 +41,7 @@
     },
     {
       id: 'sys_user',
-      label: 'Ansatte'
+      label: 'Finn kollegaen min'
     },
     {
       id: 'topic',

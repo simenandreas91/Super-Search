@@ -41,6 +41,7 @@ superSearchEngine.prototype = {
         var portalSysId = this._safeString(request.portalSysId);
         var featuredKnowledgeBaseId = this._safeString(request.featuredKnowledgeBaseId);
         var featuredKnowledgeBaseLabel = this._cleanQuery(request.featuredKnowledgeBaseLabel);
+        var featuredTopicId = this._safeString(request.featuredTopicId);
         var resultFilter = this._normalizeResultFilter(request.resultFilter);
         var includeBodySearch = this._toBoolean(request.includeBodySearch);
         var shortQueryLength = this._clampInteger(request.shortQueryLength, this.DEFAULT_SHORT_QUERY_LENGTH, 1, 10);
@@ -73,7 +74,7 @@ superSearchEngine.prototype = {
             return response;
         }
 
-        context = this._buildContext(articlePageId, catalogItemPageId, newsPageId, newsContentTypeId, portalSysId, featuredKnowledgeBaseId, featuredKnowledgeBaseLabel);
+        context = this._buildContext(articlePageId, catalogItemPageId, newsPageId, newsContentTypeId, portalSysId, featuredKnowledgeBaseId, featuredKnowledgeBaseLabel, featuredTopicId);
         queryProfile = this._buildQueryProfile(query, normalizedQuery, synonymDictionaryId);
         searchStrategy = this._buildSearchStrategy(queryProfile, candidateLimit, pageSize, includeBodySearch, shortQueryLength, shortQueryCandidateLimit, shortQueryResultLimit);
         response.querySummaryLabel = this._buildQuerySummaryLabel(queryProfile.searchTerms);
@@ -104,13 +105,14 @@ superSearchEngine.prototype = {
         return response;
     },
 
-    _buildContext: function(articlePageId, catalogItemPageId, newsPageId, newsContentTypeId, portalSysId, featuredKnowledgeBaseId, featuredKnowledgeBaseLabel) {
+    _buildContext: function(articlePageId, catalogItemPageId, newsPageId, newsContentTypeId, portalSysId, featuredKnowledgeBaseId, featuredKnowledgeBaseLabel, featuredTopicId) {
         var knowledgeRecord = new GlideRecordSecure(this.KNOWLEDGE_TABLE);
         var catalogRecord = new GlideRecordSecure(this.CATALOG_TABLE);
         var newsRecord = new GlideRecordSecure(this.NEWS_TABLE);
         var userRecord = new GlideRecordSecure(this.USER_TABLE);
         var topicRecord = new GlideRecordSecure(this.TOPIC_TABLE);
         var portalTaxonomyIds = this._getPortalTaxonomyIds(portalSysId);
+        var excludedTopicIds = this._getExcludedTopicIdsForFeaturedTopic(featuredTopicId, portalTaxonomyIds);
         var currentDateTime = new GlideDateTime();
         var todayValue = currentDateTime.getValue().substring(0, 10);
 
@@ -125,6 +127,8 @@ superSearchEngine.prototype = {
             portalTaxonomyIds: portalTaxonomyIds,
             featuredKnowledgeBaseId: featuredKnowledgeBaseId,
             featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,
+            featuredTopicId: featuredTopicId,
+            excludedTopicIds: excludedTopicIds,
             todayValue: todayValue,
             knowledgeFields: {
                 number: knowledgeRecord.isValidField('number'),
@@ -174,6 +178,7 @@ superSearchEngine.prototype = {
                 name: topicRecord.isValidField('name'),
                 description: topicRecord.isValidField('description'),
                 taxonomy: topicRecord.isValidField('taxonomy'),
+                parentTopic: topicRecord.isValidField('parent_topic'),
                 updatedOn: topicRecord.isValidField('sys_updated_on'),
                 active: topicRecord.isValidField('active')
             }
@@ -904,6 +909,10 @@ superSearchEngine.prototype = {
         if (context.topicFields.taxonomy && context.portalTaxonomyIds.length > 0) {
             record.addQuery('taxonomy', 'IN', context.portalTaxonomyIds.join(','));
         }
+
+        if (context.excludedTopicIds && context.excludedTopicIds.length > 0) {
+            record.addQuery('sys_id', 'NOT IN', context.excludedTopicIds.join(','));
+        }
     },
 
     _storeKnowledgeCandidate: function(record, context, candidateMap, candidates) {
@@ -936,7 +945,10 @@ superSearchEngine.prototype = {
             record.getValue('kb_knowledge_base') === context.featuredKnowledgeBaseId;
 
         if (candidate.isFeaturedKnowledgeBase && context.featuredKnowledgeBaseLabel) {
+            candidate.resultTypeLabel = context.featuredKnowledgeBaseLabel;
             candidate.kbName = context.featuredKnowledgeBaseLabel;
+        } else {
+            candidate.resultTypeLabel = 'Artikler';
         }
 
         candidateMap[candidateKey] = candidate;
@@ -1147,16 +1159,7 @@ superSearchEngine.prototype = {
         for (index = 0; index < candidates.length; index++) {
             candidate = candidates[index];
             candidate.score = this._calculateScore(candidate, queryProfile);
-
-            if (candidate.resultType === 'knowledge') {
-                candidate.score += 20;
-            } else if (candidate.resultType === 'news') {
-                candidate.score += 10;
-            } else if (candidate.resultType === 'sys_user') {
-                candidate.score += 15;
-            } else if (candidate.resultType === 'topic') {
-                candidate.score += 12;
-            }
+            candidate.resultTypePriority = this._getResultTypePriority(candidate);
 
             if (candidate.score > 0) {
                 scoredCandidates.push(candidate);
@@ -1207,6 +1210,34 @@ superSearchEngine.prototype = {
         });
 
         return score;
+    },
+
+    _getResultTypePriority: function(candidate) {
+        if (!candidate || !candidate.resultType) {
+            return 99;
+        }
+
+        if (candidate.resultType === 'catalog_item') {
+            return 1;
+        }
+
+        if (candidate.resultType === 'knowledge') {
+            return 2;
+        }
+
+        if (candidate.resultType === 'news') {
+            return 3;
+        }
+
+        if (candidate.resultType === 'topic') {
+            return 4;
+        }
+
+        if (candidate.resultType === 'sys_user') {
+            return 5;
+        }
+
+        return 99;
     },
 
     _calculateTermScore: function(haystack, searchTerm, weights) {
@@ -1672,6 +1703,56 @@ superSearchEngine.prototype = {
         return taxonomyIds;
     },
 
+    _getExcludedTopicIdsForFeaturedTopic: function(featuredTopicId, portalTaxonomyIds) {
+        var rootTopicId = this._safeString(featuredTopicId);
+        var excludedTopicIds = [];
+        var excludedTopicMap = {};
+        var pendingTopicIds = [];
+        var batchTopicIds;
+        var topicRecord;
+        var childTopicId;
+
+        if (!rootTopicId) {
+            return excludedTopicIds;
+        }
+
+        excludedTopicIds.push(rootTopicId);
+        excludedTopicMap[rootTopicId] = true;
+        pendingTopicIds.push(rootTopicId);
+
+        topicRecord = new GlideRecord(this.TOPIC_TABLE);
+
+        if (!topicRecord.isValid() || !topicRecord.isValidField('parent_topic')) {
+            return excludedTopicIds;
+        }
+
+        while (pendingTopicIds.length > 0) {
+            batchTopicIds = pendingTopicIds.splice(0, 100);
+            topicRecord = new GlideRecord(this.TOPIC_TABLE);
+            topicRecord.addQuery('parent_topic', 'IN', batchTopicIds.join(','));
+
+            if (topicRecord.isValidField('taxonomy') && portalTaxonomyIds && portalTaxonomyIds.length > 0) {
+                topicRecord.addQuery('taxonomy', 'IN', portalTaxonomyIds.join(','));
+            }
+
+            topicRecord.query();
+
+            while (topicRecord.next()) {
+                childTopicId = topicRecord.getUniqueValue();
+
+                if (!childTopicId || excludedTopicMap[childTopicId]) {
+                    continue;
+                }
+
+                excludedTopicMap[childTopicId] = true;
+                excludedTopicIds.push(childTopicId);
+                pendingTopicIds.push(childTopicId);
+            }
+        }
+
+        return excludedTopicIds;
+    },
+
     _getCatalogTypeLabel: function(record, context) {
         var className = context.catalogFields.className ? record.getValue('sys_class_name') : '';
 
@@ -1745,7 +1826,7 @@ superSearchEngine.prototype = {
             },
             sys_user: {
                 id: 'sys_user',
-                label: 'Ansatte',
+                label: 'Finn kollegaen min',
                 count: 0
             },
             topic: {
@@ -1805,6 +1886,13 @@ superSearchEngine.prototype = {
     },
 
     _compareCandidates: function(leftCandidate, rightCandidate) {
+        var leftPriority = typeof leftCandidate.resultTypePriority === 'number' ? leftCandidate.resultTypePriority : 99;
+        var rightPriority = typeof rightCandidate.resultTypePriority === 'number' ? rightCandidate.resultTypePriority : 99;
+
+        if (leftPriority !== rightPriority) {
+            return leftPriority - rightPriority;
+        }
+
         if (leftCandidate.score !== rightCandidate.score) {
             return rightCandidate.score - leftCandidate.score;
         }

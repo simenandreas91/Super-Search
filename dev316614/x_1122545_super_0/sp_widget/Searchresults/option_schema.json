@@ -110,5 +110,13 @@
     "default_value": "Styrende dokumenter",
     "section": "Behavior",
     "hint": "User-facing label for the dedicated knowledge base filter."
+  },
+  {
+    "name": "featured_topic_id",
+    "label": "Featured topic sys_id to exclude from results",
+    "type": "string",
+    "default_value": "",
+    "section": "Behavior",
+    "hint": "Topic sys_id to exclude from topic search results together with all child topics in its hierarchy."
   }
 ]
