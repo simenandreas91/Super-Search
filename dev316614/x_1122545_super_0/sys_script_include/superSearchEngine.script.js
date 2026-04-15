@@ -59,6 +59,7 @@ superSearchEngine.prototype = {
             total: 0,
             totalPages: 0,
             hasMore: false,
+            allResults: [],
             results: []
         };
         var context;
@@ -81,6 +82,7 @@ superSearchEngine.prototype = {
         scoredCandidates = this._getScoredCandidates(context, queryProfile, searchStrategy.candidateLimit, searchStrategy.includeBodySearch);
         scoredCandidates = this._limitResults(scoredCandidates, searchStrategy.resultLimit);
         response.filters = this._buildFilterSummary(scoredCandidates, context);
+        response.allResults = this._shapeResults(scoredCandidates, queryProfile, context);
         scoredCandidates = this._applyResultFilter(scoredCandidates, resultFilter);
         response.total = scoredCandidates.length;
         response.totalPages = response.total > 0 ? Math.ceil(response.total / response.pageSize) : 0;

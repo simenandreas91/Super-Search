@@ -1,10 +1,114 @@
-api.controller = function($location, $window) {
+api.controller = function($window) {
   var c = this;
 
-  c.search = c.data.search;
   c.isLoading = false;
   c.normalizeQuery = function(value) {
     return (value || '').replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
+  };
+
+  c.normalizeFilter = function(value) {
+    var normalizedValue = String(value || 'all').toLowerCase();
+
+    if (normalizedValue === 'knowledge') {
+      return 'knowledge_total';
+    }
+
+    if (normalizedValue === 'knowledge_total' || normalizedValue === 'knowledge_articles' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'sys_user' || normalizedValue === 'topic' || normalizedValue === 'featured_kb') {
+      return normalizedValue;
+    }
+
+    return 'all';
+  };
+
+  c.matchesFilter = function(result, filterId) {
+    if (!result) {
+      return false;
+    }
+
+    if (filterId === 'all') {
+      return true;
+    }
+
+    if (filterId === 'knowledge_total') {
+      return result.resultType === 'knowledge';
+    }
+
+    if (filterId === 'featured_kb') {
+      return result.isFeaturedKnowledgeBase === true;
+    }
+
+    if (filterId === 'knowledge_articles') {
+      return result.resultType === 'knowledge' && result.isFeaturedKnowledgeBase !== true;
+    }
+
+    return result.resultType === filterId;
+  };
+
+  c.getFilteredResults = function(search, filterId) {
+    var allResults = search && angular.isArray(search.allResults) ? search.allResults : [];
+
+    return allResults.filter(function(result) {
+      return c.matchesFilter(result, filterId);
+    });
+  };
+
+  c.applyClientState = function(search, request) {
+    var nextFilter;
+    var filteredResults;
+    var totalPages;
+    var nextPage;
+    var startIndex;
+
+    if (!search) {
+      return search;
+    }
+
+    nextFilter = c.normalizeFilter(request && typeof request.resultFilter !== 'undefined' ? request.resultFilter : search.activeFilter);
+    filteredResults = c.getFilteredResults(search, nextFilter);
+    totalPages = filteredResults.length ? Math.ceil(filteredResults.length / search.pageSize) : 0;
+    nextPage = parseInt(request && typeof request.page !== 'undefined' ? request.page : search.page, 10);
+
+    if (isNaN(nextPage) || nextPage < 1) {
+      nextPage = 1;
+    }
+
+    if (totalPages > 0 && nextPage > totalPages) {
+      nextPage = totalPages;
+    }
+
+    if (totalPages === 0) {
+      nextPage = 1;
+    }
+
+    startIndex = (nextPage - 1) * search.pageSize;
+    search.activeFilter = nextFilter;
+    search.page = nextPage;
+    search.total = filteredResults.length;
+    search.totalPages = totalPages;
+    search.hasMore = nextPage < totalPages;
+    search.results = filteredResults.slice(startIndex, startIndex + search.pageSize);
+
+    return search;
+  };
+
+  c.prepareSearch = function(search) {
+    var preparedSearch = search || {};
+
+    if (!angular.isArray(preparedSearch.allResults)) {
+      preparedSearch.allResults = angular.isArray(preparedSearch.results) ? preparedSearch.results.slice(0) : [];
+    }
+
+    if (!preparedSearch.pageSize || preparedSearch.pageSize < 1) {
+      preparedSearch.pageSize = 10;
+    }
+
+    preparedSearch.activeFilter = c.normalizeFilter(preparedSearch.activeFilter);
+    preparedSearch.page = parseInt(preparedSearch.page, 10) || 1;
+
+    return c.applyClientState(preparedSearch, {
+      page: preparedSearch.page,
+      resultFilter: preparedSearch.activeFilter
+    });
   };
 
   c.executeSearch = function(request) {
@@ -23,7 +127,7 @@ api.controller = function($location, $window) {
     }
 
     if (typeof request.resultFilter !== 'undefined') {
-      nextFilter = request.resultFilter;
+      nextFilter = c.normalizeFilter(request.resultFilter);
     }
 
     if (!nextQuery) {
@@ -36,7 +140,7 @@ api.controller = function($location, $window) {
       page: nextPage,
       resultFilter: nextFilter
     }).then(function(response) {
-      c.search = response.data.search;
+      c.search = c.prepareSearch(response.data.search);
       c.updateUrl();
       c.isLoading = false;
     }, function() {
@@ -44,12 +148,21 @@ api.controller = function($location, $window) {
     });
   };
 
+  c.updateLocalResults = function(request) {
+    if (!c.search) {
+      return;
+    }
+
+    c.applyClientState(c.search, request || {});
+    c.updateUrl();
+  };
+
   c.goToPage = function(page) {
     if (c.isLoading || !c.search || page < 1 || page > c.search.totalPages || page === c.search.page) {
       return;
     }
 
-    c.executeSearch({
+    c.updateLocalResults({
       page: page
     });
   };
@@ -63,7 +176,7 @@ api.controller = function($location, $window) {
       return;
     }
 
-    c.executeSearch({
+    c.updateLocalResults({
       page: 1,
       resultFilter: filterId
     });
@@ -151,25 +264,34 @@ api.controller = function($location, $window) {
   };
 
   c.updateUrl = function() {
+    var params = new $window.URLSearchParams($window.location.search || '');
+    var queryString;
+    var nextUrl;
+
     if (!c.search || !c.search.query) {
-      $location.search('q', null);
-      $location.search('page', null);
-      $location.search('filter', null);
-      return;
-    }
-
-    $location.search('q', c.search.query);
-
-    if (c.search.page > 1) {
-      $location.search('page', c.search.page);
+      params.delete('q');
+      params.delete('page');
+      params.delete('filter');
     } else {
-      $location.search('page', null);
+      params.set('q', c.search.query);
+
+      if (c.search.page > 1) {
+        params.set('page', c.search.page);
+      } else {
+        params.delete('page');
+      }
+
+      if (c.search.activeFilter && c.search.activeFilter !== 'all') {
+        params.set('filter', c.search.activeFilter);
+      } else {
+        params.delete('filter');
+      }
     }
 
-    if (c.search.activeFilter && c.search.activeFilter !== 'all') {
-      $location.search('filter', c.search.activeFilter);
-    } else {
-      $location.search('filter', null);
-    }
+    queryString = params.toString();
+    nextUrl = $window.location.pathname + (queryString ? '?' + queryString : '') + ($window.location.hash || '');
+    $window.history.replaceState(null, '', nextUrl);
   };
+
+  c.search = c.prepareSearch(c.data.search);
 };
