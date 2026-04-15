@@ -265,8 +265,11 @@ api.controller = function($window) {
   };
 
   c.updateUrl = function() {
-    var params = new $window.URLSearchParams($window.location.search || '');
+    var currentParams = new $window.URLSearchParams($window.location.search || '');
+    var params = new $window.URLSearchParams(currentParams.toString());
+    var currentQueryString;
     var queryString;
+    var currentUrl;
     var nextUrl;
 
     if (!c.search || !c.search.query) {
@@ -289,8 +292,15 @@ api.controller = function($window) {
       }
     }
 
+    currentQueryString = currentParams.toString();
     queryString = params.toString();
+    currentUrl = $window.location.pathname + (currentQueryString ? '?' + currentQueryString : '') + ($window.location.hash || '');
     nextUrl = $window.location.pathname + (queryString ? '?' + queryString : '') + ($window.location.hash || '');
+
+    if (nextUrl === currentUrl) {
+      return;
+    }
+
     $window.history.replaceState(null, '', nextUrl);
   };
 
