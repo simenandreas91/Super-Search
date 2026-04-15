@@ -44,10 +44,14 @@
             Alle <span class="super-search-results__filter-count" ng-bind="c.search.filters.all.count"></span>
           </button>
           <div class="super-search-results__filter-group">
-            <div class="super-search-results__filter-group-header">
-              <span class="super-search-results__filter-group-title">Kunnskapsartikler</span>
-              <span class="super-search-results__filter-group-count" ng-bind="c.search.filters.knowledge_total.count"></span>
-            </div>
+            <button
+              type="button"
+              class="super-search-results__filter"
+              ng-class="{'super-search-results__filter--active': c.isActiveFilter('knowledge_total')}"
+              ng-click="c.setFilter('knowledge_total')"
+              ng-disabled="c.isLoading">
+              Kunnskapsartikler <span class="super-search-results__filter-count" ng-bind="c.search.filters.knowledge_total.count"></span>
+            </button>
             <button
               type="button"
               class="super-search-results__filter super-search-results__filter--subfilter super-search-results__filter--knowledge-base"

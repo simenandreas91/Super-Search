@@ -1684,10 +1684,10 @@ superSearchEngine.prototype = {
         var normalizedValue = this._normalizeQuery(value);
 
         if (normalizedValue === 'knowledge') {
-            return 'knowledge_articles';
+            return 'knowledge_total';
         }
 
-        if (normalizedValue === 'knowledge_articles' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'sys_user' || normalizedValue === 'topic' || normalizedValue === 'featured_kb' || normalizedValue === 'all') {
+        if (normalizedValue === 'knowledge_total' || normalizedValue === 'knowledge_articles' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'sys_user' || normalizedValue === 'topic' || normalizedValue === 'featured_kb' || normalizedValue === 'all') {
             return normalizedValue;
         }
 
@@ -1703,7 +1703,9 @@ superSearchEngine.prototype = {
         }
 
         for (index = 0; index < candidates.length; index++) {
-            if (resultFilter === 'featured_kb' && candidates[index].isFeaturedKnowledgeBase) {
+            if (resultFilter === 'knowledge_total' && candidates[index].resultType === 'knowledge') {
+                filteredCandidates.push(candidates[index]);
+            } else if (resultFilter === 'featured_kb' && candidates[index].isFeaturedKnowledgeBase) {
                 filteredCandidates.push(candidates[index]);
             } else if (resultFilter === 'knowledge_articles' &&
                 candidates[index].resultType === 'knowledge' &&

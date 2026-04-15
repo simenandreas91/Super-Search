@@ -20,6 +20,10 @@
       label: 'Alle'
     },
     {
+      id: 'knowledge_total',
+      label: 'Kunnskapsartikler'
+    },
+    {
       id: 'featured_kb',
       label: 'Styrende dokumenter'
     },
@@ -53,10 +57,10 @@
     var normalizedValue = String(value || 'all').toLowerCase();
 
     if (normalizedValue === 'knowledge') {
-      return 'knowledge_articles';
+      return 'knowledge_total';
     }
 
-    if (normalizedValue === 'knowledge_articles' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'sys_user' || normalizedValue === 'topic' || normalizedValue === 'featured_kb') {
+    if (normalizedValue === 'knowledge_total' || normalizedValue === 'knowledge_articles' || normalizedValue === 'catalog_item' || normalizedValue === 'news' || normalizedValue === 'sys_user' || normalizedValue === 'topic' || normalizedValue === 'featured_kb') {
       return normalizedValue;
     }
 
