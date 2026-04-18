@@ -24,6 +24,37 @@ superSearchEngine.prototype = {
         this.DEFAULT_USER_PROFILE_PAGE_ID = 'user_profile';
         this.DEFAULT_TOPIC_PAGE_ID = 'emp_taxonomy_topic';
         this.DEFAULT_NEWS_CONTENT_TYPE_ID = '4880186c53202110a489ddeeff7b129a';
+        this.KNOWLEDGE_FALLBACK_MIN_QUERY_TOKENS = 2;
+        this.KNOWLEDGE_FALLBACK_MIN_TOKEN_LENGTH = 2;
+        this.KNOWLEDGE_FALLBACK_REQUIRED_RATIO = 0.75;
+        this.KNOWLEDGE_FALLBACK_MAX_CANDIDATES = 30;
+        this.NEWS_FALLBACK_MIN_QUERY_TOKENS = 3;
+        this.NEWS_FALLBACK_MIN_TOKEN_LENGTH = 3;
+        this.NEWS_FALLBACK_REQUIRED_RATIO = 0.7;
+        this.NEWS_FALLBACK_MAX_CANDIDATES = 25;
+        this.NEWS_FALLBACK_SCORE_PENALTY = 20;
+        this.NEWS_FALLBACK_STOP_WORDS = {
+            'a': true,
+            'an': true,
+            'and': true,
+            'av': true,
+            'den': true,
+            'denne': true,
+            'det': true,
+            'dette': true,
+            'en': true,
+            'et': true,
+            'for': true,
+            'fra': true,
+            'i': true,
+            'med': true,
+            'og': true,
+            'pa': true,
+            'på': true,
+            'som': true,
+            'the': true,
+            'til': true
+        };
         this.SNIPPET_LENGTH = 180;
     },
 
@@ -475,6 +506,10 @@ superSearchEngine.prototype = {
             this._collectKnowledgeCandidatesForPass(context, passDefinitions[index], candidateLimit, candidateMap, candidates);
         }
 
+        if (candidates.length === 0) {
+            this._collectFallbackKnowledgeCandidates(context, queryProfile, candidateLimit, candidateMap, candidates);
+        }
+
         return candidates;
     },
 
@@ -513,6 +548,10 @@ superSearchEngine.prototype = {
             }
 
             this._collectNewsCandidatesForPass(context, passDefinitions[index], candidateLimit, candidateMap, candidates);
+        }
+
+        if (candidates.length === 0) {
+            this._collectFallbackNewsCandidates(context, queryProfile, candidateLimit, candidateMap, candidates);
         }
 
         return candidates;
@@ -738,6 +777,54 @@ superSearchEngine.prototype = {
         }
     },
 
+    _collectFallbackKnowledgeCandidates: function(context, queryProfile, candidateLimit, candidateMap, candidates) {
+        var primaryTokens = queryProfile && queryProfile.primaryTerm ? queryProfile.primaryTerm.tokens : [];
+        var fallbackTokens = this._getFallbackKnowledgeTokens(primaryTokens);
+        var requiredMatchCount;
+        var remainingCapacity = candidateLimit - candidates.length;
+        var probeLimit;
+        var record;
+        var condition;
+        var index;
+        var candidate;
+
+        if (remainingCapacity <= 0 ||
+            primaryTokens.length < this.KNOWLEDGE_FALLBACK_MIN_QUERY_TOKENS ||
+            fallbackTokens.length < this.KNOWLEDGE_FALLBACK_MIN_QUERY_TOKENS) {
+            return;
+        }
+
+        requiredMatchCount = this._getFallbackKnowledgeRequiredMatchCount(fallbackTokens.length);
+        probeLimit = Math.min(this.KNOWLEDGE_FALLBACK_MAX_CANDIDATES, Math.max(remainingCapacity * 5, remainingCapacity));
+        record = new GlideRecordSecure(this.KNOWLEDGE_TABLE);
+
+        this._applyKnowledgeBaseFilters(record, context);
+        condition = record.addQuery('short_description', 'CONTAINS', fallbackTokens[0]);
+
+        for (index = 1; index < fallbackTokens.length; index++) {
+            condition.addOrCondition('short_description', 'CONTAINS', fallbackTokens[index]);
+        }
+
+        if (context.knowledgeFields.updatedOn) {
+            record.orderByDesc('sys_updated_on');
+        }
+
+        record.setLimit(probeLimit);
+        record.query();
+
+        while (record.next() && candidates.length < candidateLimit) {
+            if (!this._knowledgeShortDescriptionMatchesFallback(record.getValue('short_description'), fallbackTokens, requiredMatchCount)) {
+                continue;
+            }
+
+            candidate = this._storeKnowledgeCandidate(record, context, candidateMap, candidates);
+
+            if (candidate) {
+                candidate.fallbackMatch = true;
+            }
+        }
+    },
+
     _collectCatalogCandidatesForPass: function(context, passDefinition, candidateLimit, candidateMap, candidates) {
         // Portal search should mirror catalog availability in the portal, not raw table ACLs on sc_cat_item.
         var record = new GlideRecord(this.CATALOG_TABLE);
@@ -782,6 +869,54 @@ superSearchEngine.prototype = {
 
         while (record.next() && candidates.length < candidateLimit) {
             this._storeNewsCandidate(record, context, candidateMap, candidates);
+        }
+    },
+
+    _collectFallbackNewsCandidates: function(context, queryProfile, candidateLimit, candidateMap, candidates) {
+        var primaryTokens = queryProfile && queryProfile.primaryTerm ? queryProfile.primaryTerm.tokens : [];
+        var fallbackTokens = this._getFallbackNewsTokens(primaryTokens);
+        var requiredMatchCount;
+        var remainingCapacity = candidateLimit - candidates.length;
+        var probeLimit;
+        var record;
+        var condition;
+        var index;
+        var candidate;
+
+        if (remainingCapacity <= 0 ||
+            primaryTokens.length < this.NEWS_FALLBACK_MIN_QUERY_TOKENS ||
+            fallbackTokens.length < 2) {
+            return;
+        }
+
+        requiredMatchCount = this._getFallbackNewsRequiredMatchCount(fallbackTokens.length);
+        probeLimit = Math.min(this.NEWS_FALLBACK_MAX_CANDIDATES, Math.max(remainingCapacity * 5, remainingCapacity));
+        record = new GlideRecordSecure(this.NEWS_TABLE);
+
+        this._applyNewsBaseFilters(record, context);
+        condition = record.addQuery('title', 'CONTAINS', fallbackTokens[0]);
+
+        for (index = 1; index < fallbackTokens.length; index++) {
+            condition.addOrCondition('title', 'CONTAINS', fallbackTokens[index]);
+        }
+
+        if (context.newsFields.updatedOn) {
+            record.orderByDesc('sys_updated_on');
+        }
+
+        record.setLimit(probeLimit);
+        record.query();
+
+        while (record.next() && candidates.length < candidateLimit) {
+            if (!this._newsTitleMatchesFallback(record.getValue('title'), fallbackTokens, requiredMatchCount)) {
+                continue;
+            }
+
+            candidate = this._storeNewsCandidate(record, context, candidateMap, candidates);
+
+            if (candidate) {
+                candidate.fallbackMatch = true;
+            }
         }
     },
 
@@ -927,7 +1062,7 @@ superSearchEngine.prototype = {
         var candidate;
 
         if (!sysId || candidateMap[candidateKey]) {
-            return;
+            return null;
         }
 
         candidate = {
@@ -959,6 +1094,7 @@ superSearchEngine.prototype = {
 
         candidateMap[candidateKey] = candidate;
         candidates.push(candidate);
+        return candidate;
     },
 
     _filterConnectedCatalogCandidates: function(candidates, context) {
@@ -1011,7 +1147,7 @@ superSearchEngine.prototype = {
         var candidate;
 
         if (!sysId || candidateMap[candidateKey]) {
-            return;
+            return null;
         }
 
         candidate = {
@@ -1033,6 +1169,7 @@ superSearchEngine.prototype = {
 
         candidateMap[candidateKey] = candidate;
         candidates.push(candidate);
+        return candidate;
     },
 
     _storeUserCandidate: function(record, context, candidateMap, candidates) {
@@ -1218,6 +1355,10 @@ superSearchEngine.prototype = {
             contains: 45,
             tokenWeight: 2
         });
+
+        if (candidate.fallbackMatch === true) {
+            score -= this.NEWS_FALLBACK_SCORE_PENALTY;
+        }
 
         return score;
     },
@@ -1950,6 +2091,103 @@ superSearchEngine.prototype = {
         }
 
         return cleanTokens;
+    },
+
+    _tokenizeForOverlap: function(value) {
+        var normalizedValue = this._normalizeQuery(value).replace(/[^0-9a-z\u00C0-\u017F_]+/g, ' ');
+        return this._tokenize(normalizedValue);
+    },
+
+    _getFallbackNewsTokens: function(tokens) {
+        var filteredTokens = [];
+        var uniqueTokens = {};
+        var index;
+        var token;
+
+        for (index = 0; index < tokens.length; index++) {
+            token = tokens[index];
+
+            if (!token ||
+                token.length < this.NEWS_FALLBACK_MIN_TOKEN_LENGTH ||
+                this.NEWS_FALLBACK_STOP_WORDS[token] ||
+                uniqueTokens[token]) {
+                continue;
+            }
+
+            uniqueTokens[token] = true;
+            filteredTokens.push(token);
+        }
+
+        return filteredTokens;
+    },
+
+    _getFallbackKnowledgeTokens: function(tokens) {
+        var filteredTokens = [];
+        var uniqueTokens = {};
+        var index;
+        var token;
+
+        for (index = 0; index < tokens.length; index++) {
+            token = tokens[index];
+
+            if (!token ||
+                token.length < this.KNOWLEDGE_FALLBACK_MIN_TOKEN_LENGTH ||
+                this.NEWS_FALLBACK_STOP_WORDS[token] ||
+                uniqueTokens[token]) {
+                continue;
+            }
+
+            uniqueTokens[token] = true;
+            filteredTokens.push(token);
+        }
+
+        return filteredTokens;
+    },
+
+    _getFallbackNewsRequiredMatchCount: function(tokenCount) {
+        return Math.max(2, Math.ceil(tokenCount * this.NEWS_FALLBACK_REQUIRED_RATIO));
+    },
+
+    _getFallbackKnowledgeRequiredMatchCount: function(tokenCount) {
+        return Math.max(2, Math.ceil(tokenCount * this.KNOWLEDGE_FALLBACK_REQUIRED_RATIO));
+    },
+
+    _newsTitleMatchesFallback: function(title, fallbackTokens, requiredMatchCount) {
+        var titleTokens = this._tokenizeForOverlap(title);
+        var titleTokenMap = this._buildTokenMap(titleTokens);
+        var matchedTokenCount = 0;
+        var index;
+
+        if (!title || !fallbackTokens || fallbackTokens.length === 0) {
+            return false;
+        }
+
+        for (index = 0; index < fallbackTokens.length; index++) {
+            if (titleTokenMap[fallbackTokens[index]]) {
+                matchedTokenCount += 1;
+            }
+        }
+
+        return matchedTokenCount >= requiredMatchCount;
+    },
+
+    _knowledgeShortDescriptionMatchesFallback: function(shortDescription, fallbackTokens, requiredMatchCount) {
+        var descriptionTokens = this._tokenizeForOverlap(shortDescription);
+        var descriptionTokenMap = this._buildTokenMap(descriptionTokens);
+        var matchedTokenCount = 0;
+        var index;
+
+        if (!shortDescription || !fallbackTokens || fallbackTokens.length === 0) {
+            return false;
+        }
+
+        for (index = 0; index < fallbackTokens.length; index++) {
+            if (descriptionTokenMap[fallbackTokens[index]]) {
+                matchedTokenCount += 1;
+            }
+        }
+
+        return matchedTokenCount >= requiredMatchCount;
     },
 
     _normalizeQuery: function(value) {
