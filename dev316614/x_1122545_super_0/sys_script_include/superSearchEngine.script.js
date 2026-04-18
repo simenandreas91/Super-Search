@@ -563,6 +563,10 @@ superSearchEngine.prototype = {
         var seenPasses = {};
         var metadataFields = [];
 
+        if (context.knowledgeFields.number) {
+            this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'number', ['=', 'STARTSWITH', 'CONTAINS']);
+        }
+
         if (context.knowledgeFields.shortDescription) {
             this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'short_description', ['=', 'STARTSWITH', 'CONTAINS']);
         }
@@ -1097,6 +1101,10 @@ superSearchEngine.prototype = {
 
     _buildKnowledgeMetadataText: function(record, context) {
         var parts = [];
+
+        if (context.knowledgeFields.number) {
+            parts.push(this._safeString(record.getValue('number')));
+        }
 
         if (context.knowledgeFields.meta) {
             parts.push(this._safeString(record.getValue('meta')));
