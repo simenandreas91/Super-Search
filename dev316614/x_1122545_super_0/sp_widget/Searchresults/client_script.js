@@ -2,6 +2,7 @@ api.controller = function($window) {
   var c = this;
 
   c.isLoading = false;
+  c.inlineSearchTerm = '';
   c.normalizeQuery = function(value) {
     return (value || '').replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
   };
@@ -141,6 +142,7 @@ api.controller = function($window) {
       resultFilter: nextFilter
     }).then(function(response) {
       c.search = c.prepareSearch(response.data.search);
+      c.inlineSearchTerm = c.search && c.search.query ? c.search.query : '';
       c.data.config.deferInitialQuery = false;
       c.updateUrl();
       c.isLoading = false;
@@ -207,6 +209,27 @@ api.controller = function($window) {
       page: 1,
       resultFilter: 'all'
     });
+  };
+
+  c.submitInlineSearch = function() {
+    var normalizedQuery = c.normalizeQuery(c.inlineSearchTerm);
+    var params;
+    var targetUrl;
+
+    if (!normalizedQuery) {
+      return;
+    }
+
+    if (c.search && c.search.query === normalizedQuery && c.search.activeFilter === 'all' && c.search.page === 1) {
+      return;
+    }
+
+    params = new $window.URLSearchParams($window.location.search || '');
+    params.set('q', normalizedQuery);
+    params.delete('page');
+    params.delete('filter');
+    targetUrl = $window.location.pathname + '?' + params.toString() + ($window.location.hash || '');
+    $window.location.href = targetUrl;
   };
 
   c.getStartIndex = function() {
@@ -305,6 +328,7 @@ api.controller = function($window) {
   };
 
   c.search = c.prepareSearch(c.data.search);
+  c.inlineSearchTerm = c.search && c.search.query ? c.search.query : '';
 
   if (c.data.config.deferInitialQuery && c.search && c.search.query) {
     c.isLoading = true;

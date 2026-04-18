@@ -1,7 +1,7 @@
 <div class="super-search-results">
   <div class="super-search-results__header" ng-if="c.search.query">
     <div class="super-search-results__heading-row">
-      <div>
+      <div class="super-search-results__heading-copy">
         <h2 class="super-search-results__title">Søkeresultater</h2>
         <p class="super-search-results__summary" ng-if="c.isLoading">
           Søker etter <span ng-bind="c.search.querySummaryLabel"></span>
@@ -13,20 +13,40 @@
           Ingen treff for <span ng-bind="c.search.querySummaryLabel"></span>
         </p>
       </div>
-      <div class="super-search-results__query-pill" ng-bind="c.search.query"></div>
+      <form class="super-search-results__search-form" ng-submit="c.submitInlineSearch()" novalidate>
+        <div class="super-search-results__search-surface">
+          <input
+            class="form-control super-search-results__search-input"
+            type="search"
+            ng-model="c.inlineSearchTerm"
+            aria-label="Søk på nytt"
+            placeholder="Søk på nytt"
+            autocomplete="off" />
+          <button
+            class="btn btn-primary super-search-results__search-button"
+            type="submit"
+            aria-label="Søk på nytt"
+            ng-disabled="c.isLoading">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.43 4.44 1.06-1.06-4.44-4.43A6.5 6.5 0 0 0 10.5 4zm0 1.5A5 5 0 1 1 5.5 10.5a5 5 0 0 1 5-5z"></path>
+            </svg>
+            <span class="super-search-results__search-button-text">Søk</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
   <div class="alert alert-info" ng-if="!c.search.query">
-    Skriv inn et sok fra forsiden for a vise kunnskapsartikler, nyheter, ansatte, områdesider og bestillinger.
+    Skriv inn et søk fra forsiden for å vise kunnskapsartikler, nyheter, ansatte, områdesider og bestillinger.
   </div>
 
   <div class="alert alert-warning" ng-if="c.search.query && !c.search.total && !c.isLoading && !c.search.filters.all.count">
-    Vi fant ingen publiserte kunnskapsartikler, nyheter, ansatte, områdesider eller bestillinger som matcher soket ditt.
+    Vi fant ingen publiserte kunnskapsartikler, nyheter, ansatte, områdesider eller bestillinger som matcher søket ditt.
   </div>
 
   <div class="alert alert-info" ng-if="c.search.query && !c.search.total && !c.isLoading && c.search.filters.all.count">
-    Ingen treff i det valgte filteret. Prove et annet filter for a se flere resultater.
+    Ingen treff i det valgte filteret. Prøv et annet filter for å se flere resultater.
   </div>
 
   <div class="super-search-results__loading" ng-if="c.isLoading">
@@ -96,7 +116,7 @@
             ng-class="{'super-search-results__filter--active': c.isActiveFilter('sys_user')}"
             ng-click="c.setFilter('sys_user')"
             ng-disabled="c.isLoading">
-            Finn kollegaen min <span class="super-search-results__filter-count" ng-bind="c.search.filters.sys_user.count"></span>
+            Finn din kollega <span class="super-search-results__filter-count" ng-bind="c.search.filters.sys_user.count"></span>
           </button>
           <button
             type="button"

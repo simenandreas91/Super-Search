@@ -1,6 +1,6 @@
 {
-  "timestamp": 1776001301757,
-  "time": "2026-04-12T13:41:41.757Z",
+  "timestamp": 1776511898562,
+  "time": "2026-04-18T11:31:38.562Z",
   "error": "Could not sync file, no valid token. Try typing the slashcommand /token in a active browser session and retry.",
   "details": {
     "message": "User is not authenticated",
