@@ -1339,6 +1339,7 @@ superSearchEngine.prototype = {
                 isUser: candidate.resultType === 'sys_user',
                 isTopic: candidate.resultType === 'topic',
                 isFeaturedKnowledgeBase: candidate.isFeaturedKnowledgeBase === true,
+                showUpdatedDate: candidate.resultType === 'knowledge' || candidate.resultType === 'news',
                 iconKey: iconInfo.key,
                 iconClass: iconInfo.className,
                 iconLabel: iconInfo.label,
@@ -1355,11 +1356,29 @@ superSearchEngine.prototype = {
                 departmentNameHtml: this._highlightText(candidate.departmentName || '', highlightTerms),
                 categoryName: candidate.categoryName,
                 language: candidate.language,
+                updatedOnDisplay: this._formatUpdatedOnDisplay(candidate.updatedOn),
                 url: candidate.url
             });
         }
 
         return results;
+    },
+
+    _formatUpdatedOnDisplay: function(updatedOn) {
+        var value = this._safeString(updatedOn);
+        var parts;
+
+        if (!value) {
+            return '';
+        }
+
+        parts = value.substring(0, 10).split('-');
+
+        if (parts.length === 3) {
+            return parts[2] + '.' + parts[1] + '.' + parts[0];
+        }
+
+        return value;
     },
 
     _getResultIconInfo: function(candidate) {

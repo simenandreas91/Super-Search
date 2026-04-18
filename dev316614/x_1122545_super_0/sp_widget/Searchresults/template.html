@@ -132,6 +132,9 @@
                 ng-class="{'super-search-results__type-badge--request': result.isRequestItem, 'super-search-results__type-badge--news': result.isNewsItem, 'super-search-results__type-badge--user': result.isUser, 'super-search-results__type-badge--topic': result.isTopic}"
                 ng-if="result.resultTypeLabel"
                 ng-bind="result.resultTypeLabel"></span>
+              <span class="super-search-results__meta-chip" ng-if="result.showUpdatedDate && result.updatedOnDisplay">
+                Oppdatert {{::result.updatedOnDisplay}}
+              </span>
               <span class="super-search-results__meta-chip" ng-if="result.number" ng-bind="result.number"></span>
               <span class="super-search-results__meta-chip" ng-if="result.kbName" ng-bind="result.kbName"></span>
             </div>

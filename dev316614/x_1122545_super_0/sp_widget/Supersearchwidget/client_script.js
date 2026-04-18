@@ -2,7 +2,7 @@ api.controller = function($window, $scope, $location) {
   var c = this;
 
   c.searchTerm = c.data.initialQuery || '';
-  c.selectedFilter = c.data.initialFilter || 'all';
+  c.selectedFilter = 'all';
 
   c.submitSearch = function() {
     var searchTerm = c.normalizeTerm(c.searchTerm);
@@ -13,10 +13,6 @@ api.controller = function($window, $scope, $location) {
     }
 
     targetUrl = '?id=' + encodeURIComponent(c.data.config.resultsPageId) + '&q=' + encodeURIComponent(searchTerm);
-
-    if (c.selectedFilter && c.selectedFilter !== 'all') {
-      targetUrl += '&filter=' + encodeURIComponent(c.selectedFilter);
-    }
 
     $window.location.href = targetUrl;
   };
@@ -41,6 +37,6 @@ api.controller = function($window, $scope, $location) {
 
   $scope.$on('$locationChangeSuccess', function() {
     c.searchTerm = c.normalizeTerm($location.search().q || '');
-    c.selectedFilter = c.normalizeFilter($location.search().filter || 'all');
+    c.selectedFilter = 'all';
   });
 };
