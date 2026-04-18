@@ -735,7 +735,8 @@ superSearchEngine.prototype = {
     },
 
     _collectCatalogCandidatesForPass: function(context, passDefinition, candidateLimit, candidateMap, candidates) {
-        var record = new GlideRecordSecure(this.CATALOG_TABLE);
+        // Portal search should mirror catalog availability in the portal, not raw table ACLs on sc_cat_item.
+        var record = new GlideRecord(this.CATALOG_TABLE);
         var remainingCapacity = candidateLimit - candidates.length;
 
         if (remainingCapacity <= 0) {
@@ -806,7 +807,8 @@ superSearchEngine.prototype = {
     },
 
     _collectTopicCandidatesForPass: function(context, passDefinition, candidateLimit, candidateMap, candidates) {
-        var record = new GlideRecordSecure(this.TOPIC_TABLE);
+        // Topic visibility in search should follow portal taxonomy and active state, not topic table ACLs.
+        var record = new GlideRecord(this.TOPIC_TABLE);
         var remainingCapacity = candidateLimit - candidates.length;
 
         if (remainingCapacity <= 0) {
@@ -1642,7 +1644,8 @@ superSearchEngine.prototype = {
     _getConnectedCatalogItemIdMap: function(candidates, context) {
         var candidateIds = [];
         var connectedItemMap = {};
-        var connectedContent = new GlideRecordSecure(this.CONNECTED_CONTENT_TABLE);
+        // Connected content and portal taxonomy are configuration records and should not disappear for end users.
+        var connectedContent = new GlideRecord(this.CONNECTED_CONTENT_TABLE);
         var candidateIdString;
         var taxonomyIdString;
         var index;
@@ -1673,7 +1676,7 @@ superSearchEngine.prototype = {
     _getPortalTaxonomyIds: function(portalSysId) {
         var taxonomyIds = [];
         var uniqueTaxonomyIds = {};
-        var portalTaxonomy = new GlideRecordSecure(this.PORTAL_TAXONOMY_TABLE);
+        var portalTaxonomy = new GlideRecord(this.PORTAL_TAXONOMY_TABLE);
         var taxonomyId;
 
         if (!portalSysId || !portalTaxonomy.isValid()) {
