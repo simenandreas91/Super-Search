@@ -1,0 +1,525 @@
+<div style="font-family: Arial, Helvetica, sans-serif; color: #1f2937; line-height: 1.7; max-width: 1100px; margin: 0 auto; background: #f8fafc;">
+  <div style="background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 55%, #0ea5e9 100%); color: #ffffff; padding: 40px 36px; border-radius: 20px; margin-bottom: 24px; box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);">
+    <div style="display: inline-block; padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,0.14); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 14px;">
+      Technical Documentation
+    </div>
+    <h1 style="margin: 0 0 12px 0; font-size: 34px; line-height: 1.2;">Super Search</h1>
+    <p style="margin: 0; font-size: 17px; max-width: 820px; color: rgba(255,255,255,0.92);">
+      Custom Service Portal search experience for ServiceNow. The app provides a single search entry point that aggregates knowledge articles, catalog items and record producers, news, users, and topics into one ranked results experience.
+    </p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 28px;">
+    <div style="background: #ffffff; border: 1px solid #dbeafe; border-radius: 16px; padding: 18px; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05);">
+      <div style="font-size: 12px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">Primary Scope</div>
+      <div style="font-size: 22px; font-weight: 700; color: #0f172a;">Portal Search</div>
+      <div style="font-size: 14px; color: #475569; margin-top: 6px;">Multi-source search across portal content types</div>
+    </div>
+    <div style="background: #ffffff; border: 1px solid #dbeafe; border-radius: 16px; padding: 18px; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05);">
+      <div style="font-size: 12px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">Core Engine</div>
+      <div style="font-size: 22px; font-weight: 700; color: #0f172a;">superSearchEngine</div>
+      <div style="font-size: 14px; color: #475569; margin-top: 6px;">Scoped script include handling query, ranking, and shaping</div>
+    </div>
+    <div style="background: #ffffff; border: 1px solid #dbeafe; border-radius: 16px; padding: 18px; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05);">
+      <div style="font-size: 12px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">Entry Widgets</div>
+      <div style="font-size: 22px; font-weight: 700; color: #0f172a;">2 Widgets</div>
+      <div style="font-size: 14px; color: #475569; margin-top: 6px;">Homepage search input and dedicated results page</div>
+    </div>
+    <div style="background: #ffffff; border: 1px solid #dbeafe; border-radius: 16px; padding: 18px; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05);">
+      <div style="font-size: 12px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">Analytics</div>
+      <div style="font-size: 22px; font-weight: 700; color: #0f172a;">GlideSPSearchAnalytics</div>
+      <div style="font-size: 14px; color: #475569; margin-top: 6px;">Search and click telemetry via a global bridge</div>
+    </div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 14px 0; font-size: 26px; color: #0f172a;">What This App Does</h2>
+    <p style="margin: 0 0 14px 0;">Super Search replaces a single-source search box with a custom Service Portal search flow that queries multiple ServiceNow tables at request time, scores the candidate records in memory, and renders a normalized set of result cards in one consistent UI.</p>
+    <p style="margin: 0 0 14px 0;">The app is widget-driven and does not depend on AI Search or a dedicated external indexing pipeline. Instead, it uses a scoped script include to query source tables directly and shape results for the portal layer.</p>
+    <div style="background: #eff6ff; border-left: 4px solid #2563eb; border-radius: 10px; padding: 16px 18px; color: #1e3a8a;">
+      <strong>Supported result types:</strong> Knowledge articles, catalog items, record producers, news articles, users, and topics.
+    </div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #0f172a;">Goals</h2>
+    <ul style="margin: 0; padding-left: 22px;">
+      <li>Provide one search entry point from the portal front page.</li>
+      <li>Search across multiple ServiceNow content types with one result-card model.</li>
+      <li>Keep portal visibility aligned with portal taxonomy and Service Portal visibility rules.</li>
+      <li>Support type-based filtering on the results page.</li>
+      <li>Publish search and click analytics for reporting.</li>
+    </ul>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 20px 0; font-size: 26px; color: #0f172a;">Main Components</h2>
+
+    <div style="margin-bottom: 18px; padding: 18px; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc;">
+      <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #0f172a;">1. <code style="background: #dbeafe; color: #1d4ed8; padding: 2px 6px; border-radius: 6px;">superSearchEngine</code> script include</h3>
+      <p style="margin: 0 0 10px 0;">This is the core search engine and the most important technical asset in the app.</p>
+      <ul style="margin: 0; padding-left: 22px;">
+        <li>Normalizes and tokenizes user queries</li>
+        <li>Expands queries using synonym sets</li>
+        <li>Builds per-table search passes</li>
+        <li>Queries multiple tables for candidates</li>
+        <li>Applies source-specific visibility and portal rules</li>
+        <li>Scores and sorts candidates in memory</li>
+        <li>Shapes results into a UI-friendly DTO</li>
+      </ul>
+      <p style="margin: 10px 0 0 0;"><strong>Public entry point:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">searchKnowledge(options)</code></p>
+    </div>
+
+    <div style="margin-bottom: 18px; padding: 18px; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc;">
+      <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #0f172a;">2. Homepage widget</h3>
+      <ul style="margin: 0; padding-left: 22px;">
+        <li>Renders the front-page search input</li>
+        <li>Supports compact mode for header/navigation use</li>
+        <li>Redirects to the results page with the user query in the URL</li>
+        <li>Does not perform the actual search itself</li>
+      </ul>
+    </div>
+
+    <div style="margin-bottom: 18px; padding: 18px; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc;">
+      <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #0f172a;">3. Results widget</h3>
+      <ul style="margin: 0; padding-left: 22px;">
+        <li>Invokes the script include to execute the search</li>
+        <li>Renders sidebar filters, result cards, and pagination</li>
+        <li>Performs client-side filtering and paging on <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">allResults</code></li>
+        <li>Publishes search impression and click analytics</li>
+      </ul>
+    </div>
+
+    <div style="padding: 18px; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc;">
+      <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #0f172a;">4. Analytics bridge</h3>
+      <ul style="margin: 0; padding-left: 22px;">
+        <li>Transforms widget analytics payloads into <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">GlideSPSearchAnalytics</code> payloads</li>
+        <li>Publishes search events and click events</li>
+        <li>Backfills click rank to <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">sys_search_event</code> when needed</li>
+      </ul>
+      <p style="margin: 10px 0 0 0; color: #7c2d12;"><strong>Important:</strong> this dependency lives outside the scoped app export tree and must exist in the target instance.</p>
+    </div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #0f172a;">Runtime Architecture</h2>
+    <div style="background: #0f172a; color: #e2e8f0; border-radius: 14px; padding: 18px 20px; font-family: Consolas, 'Courier New', monospace; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere;">[Homepage Widget]
+    |
+    | redirect with q
+    v
+[Search Results Page]
+    |
+    | c.server.get({ query, page, resultFilter })
+    v
+[Searchresults Server Script]
+    |
+    | new x_1122545_super_0.superSearchEngine().searchKnowledge(...)
+    v
+[superSearchEngine]
+    |
+    | query multiple tables + score + shape
+    v
+[Searchresults Client/Template]
+    |
+    | render cards, filters, pagination
+    | publish search/click analytics
+    v
+[SuperSearchAnalyticsBridge]
+    |
+    v
+[GlideSPSearchAnalytics / sys_search_event]</div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #0f172a;">End-to-End Flow</h2>
+    <h3 style="margin: 18px 0 8px 0; font-size: 20px; color: #0f172a;">Homepage flow</h3>
+    <ol style="margin: 0 0 16px 0; padding-left: 22px;">
+      <li>User enters a query in the homepage search widget.</li>
+      <li>The client controller normalizes whitespace.</li>
+      <li>The widget redirects to the configured results page.</li>
+    </ol>
+    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 14px 16px; font-family: Consolas, 'Courier New', monospace; font-size: 13px;">?id=search_results&amp;q=&lt;query&gt;</div>
+
+    <h3 style="margin: 20px 0 8px 0; font-size: 20px; color: #0f172a;">Results page flow</h3>
+    <ol style="margin: 0; padding-left: 22px;">
+      <li><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">Searchresults</code> server script reads URL params and widget options.</li>
+      <li>On initial page load without widget input, it builds a shell state and sets <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">deferInitialQuery = true</code>.</li>
+      <li>The client controller immediately calls the server with the query.</li>
+      <li>The server script calls <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">superSearchEngine.searchKnowledge(...)</code>.</li>
+      <li>The engine returns normalized results, filter counts, and paging metadata.</li>
+      <li>The client handles filter changes and pagination locally from <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">allResults</code>.</li>
+      <li>Search and click analytics are published by the results widget.</li>
+    </ol>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #0f172a;">Search Sources</h2>
+    <table style="width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 14px; border: 1px solid #cbd5e1;">
+      <thead>
+        <tr style="background: #e0f2fe; color: #0f172a;">
+          <th style="text-align: left; padding: 12px 14px; border-bottom: 1px solid #cbd5e1;">Result type</th>
+          <th style="text-align: left; padding: 12px 14px; border-bottom: 1px solid #cbd5e1;">Table</th>
+          <th style="text-align: left; padding: 12px 14px; border-bottom: 1px solid #cbd5e1;">Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background: #ffffff;">
+          <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>knowledge</code></td>
+          <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>kb_knowledge</code></td>
+          <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Published knowledge articles</td>
+        </tr>
+        <tr style="background: #f8fafc;">
+          <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>catalog_item</code></td>
+          <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>sc_cat_item</code></td>
+          <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Includes regular catalog items and record producers</td>
+        </tr>
+        <tr style="background: #ffffff;">
+          <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>news</code></td>
+          <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>sn_cd_content_base</code></td>
+          <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Limited by configured content type</td>
+        </tr>
+        <tr style="background: #f8fafc;">
+          <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>sys_user</code></td>
+          <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>sys_user</code></td>
+          <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Active users</td>
+        </tr>
+        <tr style="background: #ffffff;">
+          <td style="padding: 12px 14px;"><code>topic</code></td>
+          <td style="padding: 12px 14px;"><code>topic</code></td>
+          <td style="padding: 12px 14px;">Restricted to the current portal taxonomy</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #0f172a;">Search Strategy</h2>
+
+    <h3 style="margin: 18px 0 8px 0; font-size: 20px; color: #0f172a;">Query normalization</h3>
+    <ul style="margin: 0 0 14px 0; padding-left: 22px;">
+      <li>Trims leading and trailing whitespace</li>
+      <li>Collapses repeated whitespace</li>
+      <li>Lowercases normalized values for matching and scoring</li>
+      <li>Tokenizes the query for overlap scoring and fallback logic</li>
+    </ul>
+
+    <h3 style="margin: 18px 0 8px 0; font-size: 20px; color: #0f172a;">Synonym expansion</h3>
+    <ul style="margin: 0 0 14px 0; padding-left: 22px;">
+      <li>Synonyms come from <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">ts_synonym_set</code>.</li>
+      <li>If <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">synonym_dictionary_id</code> is configured, only that set is used.</li>
+      <li>Otherwise all active synonym sets are eligible.</li>
+      <li>Synonym-derived matches are scored lower than direct query matches.</li>
+    </ul>
+
+    <h3 style="margin: 18px 0 8px 0; font-size: 20px; color: #0f172a;">Per-table pass definitions</h3>
+    <p style="margin: 0 0 10px 0;">The engine builds ordered search passes instead of issuing one broad query. Examples:</p>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;">
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+        <strong>Knowledge</strong>
+        <div style="margin-top: 8px; color: #475569;">number, short_description, meta, keywords, optionally text</div>
+      </div>
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+        <strong>Catalog</strong>
+        <div style="margin-top: 8px; color: #475569;">name, short_description, meta, optionally description</div>
+      </div>
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+        <strong>News</strong>
+        <div style="margin-top: 8px; color: #475569;">title</div>
+      </div>
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+        <strong>Users</strong>
+        <div style="margin-top: 8px; color: #475569;">name, title, department.name, user_name, email</div>
+      </div>
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+        <strong>Topics</strong>
+        <div style="margin-top: 8px; color: #475569;">name, optionally description</div>
+      </div>
+    </div>
+
+    <h3 style="margin: 18px 0 8px 0; font-size: 20px; color: #0f172a;">Short-query optimization</h3>
+    <p style="margin: 0 0 10px 0;">Very short queries can produce too many broad matches. The app supports a short-query profile controlled by:</p>
+    <ul style="margin: 0; padding-left: 22px;">
+      <li><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">short_query_length</code></li>
+      <li><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">short_query_candidate_limit</code></li>
+      <li><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">short_query_result_limit</code></li>
+    </ul>
+    <p style="margin: 10px 0 0 0;">When the query length is at or below the threshold, body search is disabled and both candidate fetch count and exposed result count are reduced.</p>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #0f172a;">Base Visibility Filters</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;">
+      <div style="padding: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: #f8fafc;">
+        <strong>Knowledge</strong>
+        <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+          <li>active = true</li>
+          <li>workflow_state = published</li>
+          <li>published &lt;= today</li>
+          <li>valid_to empty or in the future</li>
+        </ul>
+      </div>
+      <div style="padding: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: #f8fafc;">
+        <strong>Catalog</strong>
+        <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+          <li>active = true</li>
+          <li>hidden_sp = false</li>
+          <li>visible_sp = true</li>
+        </ul>
+      </div>
+      <div style="padding: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: #f8fafc;">
+        <strong>News</strong>
+        <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+          <li>active = true</li>
+          <li>content_type = configured news content type</li>
+        </ul>
+      </div>
+      <div style="padding: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: #f8fafc;">
+        <strong>Users</strong>
+        <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+          <li>active = true</li>
+        </ul>
+      </div>
+      <div style="padding: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: #f8fafc;">
+        <strong>Topics</strong>
+        <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+          <li>active = true</li>
+          <li>taxonomy belongs to current portal</li>
+          <li>optional featured topic subtree exclusion</li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="margin-top: 16px; background: #fff7ed; border-left: 4px solid #f97316; border-radius: 10px; padding: 16px 18px; color: #9a3412;">
+      <strong>Design choice:</strong> catalog items and topics are queried with <code style="background: rgba(255,255,255,0.6); padding: 2px 6px; border-radius: 6px;">GlideRecord</code> rather than <code style="background: rgba(255,255,255,0.6); padding: 2px 6px; border-radius: 6px;">GlideRecordSecure</code> so visibility follows portal configuration rules instead of raw table ACL behavior.
+    </div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #0f172a;">Portal-Aware Behavior</h2>
+    <div style="margin-bottom: 14px; padding: 18px; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc;">
+      <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #0f172a;">Portal taxonomy drives topic visibility</h3>
+      <p style="margin: 0;">The engine reads <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">m2m_sp_portal_taxonomy</code> for the active portal and only returns topics from those taxonomies.</p>
+    </div>
+    <div style="padding: 18px; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc;">
+      <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #0f172a;">Catalog items must be connected to visible topics</h3>
+      <p style="margin: 0;">Catalog candidates are post-filtered through <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">m2m_connected_content</code>. Only items connected to topics in the current portal taxonomy are kept, which prevents the widget from surfacing catalog items that are not actually wired into the portal’s navigational model.</p>
+    </div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #0f172a;">Ranking and Sorting</h2>
+    <p style="margin: 0 0 12px 0;">After collection, candidates from all sources are merged and scored in memory. The score is based on title, metadata, body text, and synonym matches.</p>
+    <ul style="margin: 0 0 14px 0; padding-left: 22px;">
+      <li>Title exact, prefix, and contains matches have the strongest weight.</li>
+      <li>Metadata is secondary.</li>
+      <li>Body text has the lowest weight.</li>
+      <li>Synonym matches score below direct query matches.</li>
+      <li>Fallback news matches receive a score penalty.</li>
+    </ul>
+
+    <h3 style="margin: 18px 0 8px 0; font-size: 20px; color: #0f172a;">Result type priority</h3>
+    <p style="margin: 0 0 10px 0;">Sorting is not score-only. The engine also applies a fixed type priority:</p>
+    <ol style="margin: 0 0 12px 0; padding-left: 22px;">
+      <li><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">catalog_item</code></li>
+      <li><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">knowledge</code></li>
+      <li><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">news</code></li>
+      <li><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">topic</code></li>
+      <li><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">sys_user</code></li>
+    </ol>
+    <div style="background: #eff6ff; border-left: 4px solid #2563eb; border-radius: 10px; padding: 16px 18px; color: #1e3a8a;">
+      <strong>Implication:</strong> a lower-scoring catalog item can still rank above a higher-scoring knowledge article because result type priority is evaluated before score.
+    </div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #0f172a;">Result Model Returned to the Widget</h2>
+    <p style="margin: 0 0 10px 0;">The engine shapes source records into a normalized result object to keep the Angular template simple and source-agnostic.</p>
+    <div style="background: #0f172a; color: #e2e8f0; border-radius: 14px; padding: 18px 20px; font-family: Consolas, 'Courier New', monospace; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere;">{
+  sysId,
+  resultType,
+  resultTypeLabel,
+  title,
+  titleHtml,
+  snippet,
+  snippetHtml,
+  number,
+  kbName,
+  catalogName,
+  employeeTitle,
+  departmentName,
+  categoryName,
+  language,
+  updatedOnDisplay,
+  url,
+  isRequestItem,
+  isNewsItem,
+  isUser,
+  isTopic
+}</div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #0f172a;">Filtering Model</h2>
+    <p style="margin: 0 0 10px 0;">The results widget supports these filter ids:</p>
+    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
+      <span style="background: #dbeafe; color: #1d4ed8; border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 700;">all</span>
+      <span style="background: #dbeafe; color: #1d4ed8; border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 700;">knowledge_total</span>
+      <span style="background: #dbeafe; color: #1d4ed8; border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 700;">featured_kb</span>
+      <span style="background: #dbeafe; color: #1d4ed8; border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 700;">knowledge_articles</span>
+      <span style="background: #dbeafe; color: #1d4ed8; border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 700;">news</span>
+      <span style="background: #dbeafe; color: #1d4ed8; border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 700;">catalog_item</span>
+      <span style="background: #dbeafe; color: #1d4ed8; border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 700;">sys_user</span>
+      <span style="background: #dbeafe; color: #1d4ed8; border-radius: 999px; padding: 8px 12px; font-size: 13px; font-weight: 700;">topic</span>
+    </div>
+    <ul style="margin: 0; padding-left: 22px;">
+      <li><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">knowledge_total</code> is the superset of all knowledge hits.</li>
+      <li><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">featured_kb</code> is a subset of knowledge based on a configured knowledge base sys_id.</li>
+      <li><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">knowledge_articles</code> is knowledge excluding the featured KB subset.</li>
+      <li>Filter changes and paging are client-side operations against <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">allResults</code>.</li>
+    </ul>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #0f172a;">Localization</h2>
+    <ul style="margin: 0 0 14px 0; padding-left: 22px;">
+      <li>UI labels in templates and defaults are mostly hardcoded in Norwegian.</li>
+      <li>Search execution itself is not fully language-aware across all sources.</li>
+      <li>Catalog and record producer display values now prefer display values for translated fields.</li>
+    </ul>
+    <p style="margin: 0 0 10px 0;">For catalog results, the engine now prefers <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">getDisplayValue(field)</code> for:</p>
+    <ul style="margin: 0; padding-left: 22px;">
+      <li><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">name</code></li>
+      <li><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">description</code></li>
+      <li><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">short_description</code></li>
+      <li><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">meta</code></li>
+    </ul>
+    <div style="margin-top: 16px; background: #ecfeff; border-left: 4px solid #06b6d4; border-radius: 10px; padding: 16px 18px; color: #155e75;">
+      <strong>Important distinction:</strong> localized display on the result card and language-aware search matching are different concerns. The former is implemented; the latter depends on how source fields are queried and translated.
+    </div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #0f172a;">Analytics</h2>
+    <h3 style="margin: 18px 0 8px 0; font-size: 20px; color: #0f172a;">Search impression event</h3>
+    <ul style="margin: 0 0 14px 0; padding-left: 22px;">
+      <li>Normalized query</li>
+      <li>Portal id</li>
+      <li>Page id</li>
+      <li>Page size</li>
+      <li>Whether results were returned</li>
+      <li>Top results with sys_id and result type</li>
+    </ul>
+    <h3 style="margin: 18px 0 8px 0; font-size: 20px; color: #0f172a;">Click event</h3>
+    <ul style="margin: 0; padding-left: 22px;">
+      <li>Query</li>
+      <li>Portal id</li>
+      <li>Page id</li>
+      <li>Click rank</li>
+      <li>Browser info</li>
+      <li>Clicked record sys_id and result type</li>
+      <li>Visible result list used as ranking context</li>
+    </ul>
+    <p style="margin: 14px 0 0 0;">The global bridge maps result types to source tables and publishes them through <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">GlideSPSearchAnalytics</code>. It also updates the latest matching <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">sys_search_event</code> to keep <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">click_rank</code> usable for reporting.</p>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #0f172a;">Configuration</h2>
+    <h3 style="margin: 18px 0 8px 0; font-size: 20px; color: #0f172a;">Homepage widget options</h3>
+    <table style="width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 14px; border: 1px solid #cbd5e1; margin-bottom: 18px;">
+      <thead>
+        <tr style="background: #e0f2fe; color: #0f172a;">
+          <th style="text-align: left; padding: 12px 14px; border-bottom: 1px solid #cbd5e1;">Option</th>
+          <th style="text-align: left; padding: 12px 14px; border-bottom: 1px solid #cbd5e1;">Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>results_page_id</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Target portal page id for results</td></tr>
+        <tr style="background: #f8fafc;"><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>input_placeholder</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Typing-placeholder text</td></tr>
+        <tr><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>button_label</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Search button label</td></tr>
+        <tr style="background: #f8fafc;"><td style="padding: 12px 14px;"><code>compact_mode</code></td><td style="padding: 12px 14px;">Compact layout without greeting</td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin: 18px 0 8px 0; font-size: 20px; color: #0f172a;">Results widget options</h3>
+    <table style="width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 14px; border: 1px solid #cbd5e1;">
+      <thead>
+        <tr style="background: #e0f2fe; color: #0f172a;">
+          <th style="text-align: left; padding: 12px 14px; border-bottom: 1px solid #cbd5e1;">Option</th>
+          <th style="text-align: left; padding: 12px 14px; border-bottom: 1px solid #cbd5e1;">Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>page_size</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Results per page</td></tr>
+        <tr style="background: #f8fafc;"><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>candidate_limit</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Max candidates gathered before scoring</td></tr>
+        <tr><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>include_body_search</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Enables low-weight body search</td></tr>
+        <tr style="background: #f8fafc;"><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>short_query_length</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Threshold for short-query optimization</td></tr>
+        <tr><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>short_query_candidate_limit</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Candidate ceiling for short queries</td></tr>
+        <tr style="background: #f8fafc;"><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>short_query_result_limit</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Max returned results for short queries</td></tr>
+        <tr><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>article_page_id</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Target page for knowledge records</td></tr>
+        <tr style="background: #f8fafc;"><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>catalog_item_page_id</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Target page for catalog items and record producers</td></tr>
+        <tr><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>news_page_id</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Target page for news records</td></tr>
+        <tr style="background: #f8fafc;"><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>news_content_type_id</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">News content type filter</td></tr>
+        <tr><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>portal_sys_id</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Explicit portal override</td></tr>
+        <tr style="background: #f8fafc;"><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>synonym_dictionary_id</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Optional synonym set restriction</td></tr>
+        <tr><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>featured_knowledge_base_id</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">KB sys_id for featured knowledge base filter</td></tr>
+        <tr style="background: #f8fafc;"><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;"><code>featured_knowledge_base_label</code></td><td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0;">Label for featured KB filter</td></tr>
+        <tr><td style="padding: 12px 14px;"><code>featured_topic_id</code></td><td style="padding: 12px 14px;">Topic subtree to exclude from topic results</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #0f172a;">Key Records by Responsibility</h2>
+    <ul style="margin: 0; padding-left: 22px;">
+      <li><strong>Search engine:</strong> Script include <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">superSearchEngine</code></li>
+      <li><strong>Homepage widget:</strong> Widget <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">Super search widget</code></li>
+      <li><strong>Results widget:</strong> Widget <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">Search results</code></li>
+      <li><strong>Global analytics companion:</strong> Global script include <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">SuperSearchAnalyticsBridge</code></li>
+    </ul>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #0f172a;">Known Design Decisions and Limitations</h2>
+    <ul style="margin: 0; padding-left: 22px;">
+      <li>Result type priority is opinionated and gives catalog items top priority.</li>
+      <li>Most user-facing labels are currently Norwegian and not externalized.</li>
+      <li>The solution performs live table queries at runtime rather than using a dedicated search index.</li>
+      <li>The initial results-page search is deferred to the client after the shell state is rendered.</li>
+      <li>The analytics bridge is a global dependency outside the scoped app export tree.</li>
+      <li>Localized display of catalog content is implemented, but language-aware search matching remains a separate problem.</li>
+    </ul>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 28px 30px; margin-bottom: 22px; box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);">
+    <h2 style="margin: 0 0 16px 0; font-size: 26px; color: #0f172a;">Extension Guidance</h2>
+    <h3 style="margin: 18px 0 8px 0; font-size: 20px; color: #0f172a;">To add another result source</h3>
+    <ol style="margin: 0 0 16px 0; padding-left: 22px;">
+      <li>Add a table constant and context field map.</li>
+      <li>Add candidate collection logic.</li>
+      <li>Add base filters.</li>
+      <li>Add a <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">_store...Candidate</code> method.</li>
+      <li>Add scoring metadata and icon handling.</li>
+      <li>Update analytics result-type-to-table mapping in the global bridge.</li>
+    </ol>
+    <h3 style="margin: 18px 0 8px 0; font-size: 20px; color: #0f172a;">To change ranking</h3>
+    <p style="margin: 0 0 12px 0;">Start with <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">_calculateScore</code>, <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">_getResultTypePriority</code>, and <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">_compareCandidates</code>.</p>
+    <h3 style="margin: 18px 0 8px 0; font-size: 20px; color: #0f172a;">To change portal visibility rules</h3>
+    <p style="margin: 0 0 12px 0;">Focus on <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">_applyCatalogBaseFilters</code>, <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">_applyTopicBaseFilters</code>, <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">_getConnectedCatalogItemIdMap</code>, and <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">_getPortalTaxonomyIds</code>.</p>
+    <h3 style="margin: 18px 0 8px 0; font-size: 20px; color: #0f172a;">To change displayed fields</h3>
+    <p style="margin: 0;">Modify the relevant <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">_store...Candidate</code> method, then update <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">_shapeResults</code> and the results widget template.</p>
+  </div>
+
+  <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #ffffff; border-radius: 20px; padding: 28px 30px; box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);">
+    <h2 style="margin: 0 0 14px 0; font-size: 26px;">Suggested Onboarding Path</h2>
+    <ol style="margin: 0 0 14px 0; padding-left: 22px; color: rgba(255,255,255,0.92);">
+      <li>Read this article</li>
+      <li>Read script include <code style="background: rgba(255,255,255,0.12); color: #ffffff; padding: 2px 6px; border-radius: 6px;">superSearchEngine</code></li>
+      <li>Read widget <code style="background: rgba(255,255,255,0.12); color: #ffffff; padding: 2px 6px; border-radius: 6px;">Search results</code></li>
+      <li>Read widget <code style="background: rgba(255,255,255,0.12); color: #ffffff; padding: 2px 6px; border-radius: 6px;">Super search widget</code></li>
+      <li>Read global script include <code style="background: rgba(255,255,255,0.12); color: #ffffff; padding: 2px 6px; border-radius: 6px;">SuperSearchAnalyticsBridge</code></li>
+    </ol>
+    <p style="margin: 0; color: rgba(255,255,255,0.86);">
+      That sequence mirrors runtime execution and gives the fastest path to understanding how the app behaves end to end.
+    </p>
+  </div>
+</div>

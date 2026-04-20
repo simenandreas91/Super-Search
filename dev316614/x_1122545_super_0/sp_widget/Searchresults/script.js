@@ -17,8 +17,14 @@
   var featuredTopicId = options.featured_topic_id || '';
   var portalRecord = $sp.getPortalRecord();
   var portalSysId = options.portal_sys_id || (portalRecord ? portalRecord.getUniqueValue() : '');
+  var currentPageId = $sp.getParameter('id') || '';
   var resultFilter = 'all';
   var searchEngine = new x_1122545_super_0.superSearchEngine();
+
+  if (input && input.action === 'trackClick') {
+    data.clickTracked = publishSearchClick(input.clickPayload);
+    return;
+  }
 
   if (input && typeof input.query !== 'undefined') {
     query = input.query;
@@ -54,6 +60,7 @@
     featuredKnowledgeBaseId: featuredKnowledgeBaseId,
     featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,
     featuredTopicId: featuredTopicId,
+    currentPageId: currentPageId,
     resultFilter: resultFilter,
     deferInitialQuery: !input
   };
@@ -79,6 +86,8 @@
       featuredTopicId: featuredTopicId,
       resultFilter: resultFilter
     });
+
+    publishSearchAnalytics(query, data.search, portalSysId, currentPageId, pageSize);
   } else {
     data.search = buildInitialSearch(query, page, pageSize, resultFilter, featuredKnowledgeBaseId, featuredKnowledgeBaseLabel);
   }
@@ -181,5 +190,65 @@
     }
 
     return 'all';
+  }
+
+  function publishSearchAnalytics(searchQuery, searchResult, portalId, pageId, defaultPageSize) {
+    var analyticsPayload;
+    var normalizedQuery = String(searchQuery || '').replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
+
+    if (!normalizedQuery) {
+      return;
+    }
+
+    try {
+      analyticsPayload = {
+        query: normalizedQuery,
+        portalId: portalId || '',
+        pageId: pageId || '',
+        pageSize: (searchResult && searchResult.pageSize) ? searchResult.pageSize : defaultPageSize,
+        hasResults: hasSearchResults(searchResult),
+        searchResults: buildAnalyticsResults(searchResult, defaultPageSize)
+      };
+      new global.SuperSearchAnalyticsBridge().publishSearch(JSON.stringify(analyticsPayload));
+    } catch (ex) {
+      gs.warn('Super Search: failed to publish analytics for query "{0}". {1}', normalizedQuery, ex.message || ex);
+    }
+  }
+
+  function buildAnalyticsResults(searchResult, defaultPageSize) {
+    var pageLimit = parseInt((searchResult && searchResult.pageSize) ? searchResult.pageSize : defaultPageSize, 10) || 10;
+    var allResults = searchResult && searchResult.allResults ? searchResult.allResults : [];
+    var results = [];
+    var index;
+
+    for (index = 0; index < allResults.length && index < pageLimit; index++) {
+      results.push({
+        sysId: allResults[index].sysId || '',
+        resultType: allResults[index].resultType || ''
+      });
+    }
+
+    return results;
+  }
+
+  function hasSearchResults(searchResult) {
+    if (!searchResult) {
+      return false;
+    }
+
+    if (typeof searchResult.total !== 'undefined') {
+      return parseInt(searchResult.total, 10) > 0;
+    }
+
+    return searchResult.results && searchResult.results.length > 0;
+  }
+
+  function publishSearchClick(clickPayload) {
+    try {
+      return new global.SuperSearchAnalyticsBridge().publishClick(JSON.stringify(clickPayload || {}));
+    } catch (ex) {
+      gs.warn('Super Search: failed to publish click analytics. ' + (ex.message || ex));
+      return false;
+    }
   }
 })();

@@ -2,6 +2,7 @@ api.controller = function($window) {
   var c = this;
 
   c.isLoading = false;
+  c.isTrackingClick = false;
   c.inlineSearchTerm = '';
   c.normalizeQuery = function(value) {
     return (value || '').replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
@@ -248,10 +249,12 @@ api.controller = function($window) {
     return Math.min(c.search.page * c.search.pageSize, c.search.total);
   };
 
-  c.openResult = function(result, event) {
+  c.openResult = function(result, index, event) {
     var currentNode;
+    var absoluteRank;
+    var clickPayload;
 
-    if (c.isLoading || !result || !result.url) {
+    if (c.isLoading || c.isTrackingClick || !result || !result.url) {
       return;
     }
 
@@ -262,10 +265,6 @@ api.controller = function($window) {
     currentNode = event && event.target;
 
     while (currentNode) {
-      if (currentNode.tagName === 'A') {
-        return;
-      }
-
       if (event && currentNode === event.currentTarget) {
         break;
       }
@@ -273,10 +272,25 @@ api.controller = function($window) {
       currentNode = currentNode.parentNode;
     }
 
-    $window.location.href = result.url;
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    absoluteRank = c.getAbsoluteRank(index);
+    clickPayload = c.buildClickPayload(result, absoluteRank);
+    c.isTrackingClick = true;
+    c.server.get({
+      action: 'trackClick',
+      clickPayload: clickPayload
+    }).then(function() {
+      $window.location.href = result.url;
+    }, function() {
+      $window.location.href = result.url;
+    });
   };
 
-  c.handleResultKeypress = function(event, result) {
+  c.handleResultKeypress = function(event, result, index) {
     var keyCode = event.which || event.keyCode;
 
     if (keyCode !== 13 && keyCode !== 32) {
@@ -284,7 +298,54 @@ api.controller = function($window) {
     }
 
     event.preventDefault();
-    c.openResult(result, event);
+    c.openResult(result, index, event);
+  };
+
+  c.buildClickPayload = function(result, rank) {
+    var traceId = 'ss-click-' + Date.now() + '-' + Math.floor(Math.random() * 100000);
+
+    return {
+      traceId: traceId,
+      query: c.search && c.search.query ? c.search.query : '',
+      portalId: c.data.config && c.data.config.portalSysId ? c.data.config.portalSysId : '',
+      pageId: c.data.config && c.data.config.currentPageId ? c.data.config.currentPageId : '',
+      clickRank: rank,
+      browserInfo: $window.navigator.userAgent || '',
+      clickedResult: {
+        sysId: result && result.sysId ? result.sysId : '',
+        resultType: result && result.resultType ? result.resultType : '',
+        label: result && result.title ? result.title : ''
+      },
+      searchResults: c.getAnalyticsResults()
+    };
+  };
+
+  c.getAnalyticsResults = function() {
+    var pageLimit = c.search && c.search.pageSize ? c.search.pageSize : 10;
+    var allResults = c.search && angular.isArray(c.search.allResults) ? c.search.allResults : [];
+    var analyticsResults = [];
+    var index;
+
+    for (index = 0; index < allResults.length && index < pageLimit; index++) {
+      analyticsResults.push({
+        sysId: allResults[index].sysId || '',
+        resultType: allResults[index].resultType || ''
+      });
+    }
+
+    return analyticsResults;
+  };
+
+  c.getAbsoluteRank = function(index) {
+    var page = c.search && c.search.page ? c.search.page : 1;
+    var pageSize = c.search && c.search.pageSize ? c.search.pageSize : 10;
+    var normalizedIndex = parseInt(index, 10);
+
+    if (isNaN(normalizedIndex) || normalizedIndex < 0) {
+      return 0;
+    }
+
+    return ((page - 1) * pageSize) + normalizedIndex + 1;
   };
 
   c.updateUrl = function() {

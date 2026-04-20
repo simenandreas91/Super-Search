@@ -1126,9 +1126,9 @@ superSearchEngine.prototype = {
             resultTypeLabel: this._getCatalogTypeLabel(record, context),
             sysId: sysId,
             number: '',
-            title: context.catalogFields.name ? this._safeString(record.getValue('name')) : '',
+            title: context.catalogFields.name ? this._getLocalizedRecordValue(record, 'name') : '',
             metaText: this._buildCatalogMetadataText(record, context),
-            bodyText: context.catalogFields.description ? this._safeString(record.getValue('description')) : '',
+            bodyText: context.catalogFields.description ? this._getLocalizedRecordValue(record, 'description') : '',
             kbName: '',
             categoryName: context.catalogFields.category ? record.getDisplayValue('category') : '',
             language: '',
@@ -1258,11 +1258,11 @@ superSearchEngine.prototype = {
         var parts = [];
 
         if (context.catalogFields.shortDescription) {
-            parts.push(this._safeString(record.getValue('short_description')));
+            parts.push(this._getLocalizedRecordValue(record, 'short_description'));
         }
 
         if (context.catalogFields.meta) {
-            parts.push(this._safeString(record.getValue('meta')));
+            parts.push(this._getLocalizedRecordValue(record, 'meta'));
         }
 
         if (context.catalogFields.category) {
@@ -2196,6 +2196,18 @@ superSearchEngine.prototype = {
 
     _cleanQuery: function(value) {
         return this._safeString(value).replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
+    },
+
+    _getLocalizedRecordValue: function(record, fieldName) {
+        var displayValue;
+
+        if (!record || !fieldName) {
+            return '';
+        }
+
+        displayValue = record.getDisplayValue(fieldName);
+
+        return this._safeString(displayValue || record.getValue(fieldName));
     },
 
     _stripHtml: function(value) {

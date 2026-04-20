@@ -141,8 +141,8 @@
           <article
             class="super-search-results__item"
             ng-class="{'super-search-results__item--request': result.isRequestItem, 'super-search-results__item--news': result.isNewsItem, 'super-search-results__item--user': result.isUser, 'super-search-results__item--topic': result.isTopic}"
-            ng-click="c.openResult(result, $event)"
-            ng-keypress="c.handleResultKeypress($event, result)"
+            ng-click="c.openResult(result, $index, $event)"
+            ng-keypress="c.handleResultKeypress($event, result, $index)"
             ng-repeat="result in c.search.results track by (result.resultType + ':' + result.sysId)"
             role="link"
             tabindex="0">
@@ -175,7 +175,7 @@
                 <i class="fa" ng-class="result.iconClass"></i>
               </span>
               <h3 class="super-search-results__item-title">
-                <a ng-href="{{::result.url}}" ng-bind-html="::result.titleHtml"></a>
+                <a ng-href="{{::result.url}}" ng-click="$event.preventDefault(); $event.stopPropagation(); c.openResult(result, $index, $event)" ng-bind-html="::result.titleHtml"></a>
               </h3>
             </div>
             <div class="super-search-results__person-details" ng-if="result.isUser">
