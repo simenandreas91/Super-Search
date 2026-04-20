@@ -13,13 +13,20 @@
     <div class="super-search-widget__surface">
       <div class="super-search-widget__controls">
         <div class="super-search-widget__input-wrap">
+          <div class="super-search-widget__placeholder" ng-if="c.placeholder.isVisible" aria-hidden="true">
+            <span class="super-search-widget__placeholder-text">{{c.placeholder.typedText}}</span>
+            <span class="super-search-widget__placeholder-caret"></span>
+          </div>
           <input
             id="super-search-input"
             class="form-control super-search-widget__input"
             type="search"
             ng-model="c.searchTerm"
+            ng-change="c.onSearchTermChange()"
+            ng-focus="c.onInputFocus()"
+            ng-blur="c.onInputBlur()"
             aria-label="Sok"
-            placeholder="{{::c.data.config.inputPlaceholder}}"
+            placeholder=""
             autocomplete="off" />
           <button class="btn btn-primary super-search-widget__button" type="submit" aria-label="{{::c.data.config.buttonLabel}}">
             <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
