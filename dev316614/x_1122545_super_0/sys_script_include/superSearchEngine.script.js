@@ -18,6 +18,7 @@ superSearchEngine.prototype = {
         this.DEFAULT_SHORT_QUERY_LENGTH = 2;
         this.DEFAULT_SHORT_QUERY_CANDIDATE_LIMIT = 20;
         this.DEFAULT_SHORT_QUERY_RESULT_LIMIT = 10;
+        this.CATALOG_ACCESS_FILTER_PROBE_MULTIPLIER = 3;
         this.DEFAULT_ARTICLE_PAGE_ID = 'kb_article';
         this.DEFAULT_CATALOG_ITEM_PAGE_ID = 'sc_cat_item';
         this.DEFAULT_NEWS_PAGE_ID = 'cd_news_article';
@@ -829,6 +830,7 @@ superSearchEngine.prototype = {
         // Portal search should mirror catalog availability in the portal, not raw table ACLs on sc_cat_item.
         var record = new GlideRecord(this.CATALOG_TABLE);
         var remainingCapacity = candidateLimit - candidates.length;
+        var probeLimit;
 
         if (remainingCapacity <= 0) {
             return;
@@ -841,7 +843,8 @@ superSearchEngine.prototype = {
             record.orderByDesc('sys_updated_on');
         }
 
-        record.setLimit(remainingCapacity);
+        probeLimit = remainingCapacity * this.CATALOG_ACCESS_FILTER_PROBE_MULTIPLIER;
+        record.setLimit(probeLimit);
         record.query();
 
         while (record.next() && candidates.length < candidateLimit) {
@@ -1111,13 +1114,50 @@ superSearchEngine.prototype = {
         return filteredCandidates;
     },
 
+    _canCurrentUserViewCatalogItem: function(sysId) {
+        var catalogItem;
+        var canView;
+
+        if (!sysId) {
+            return false;
+        }
+
+        try {
+            if (typeof sn_sc === 'undefined' || !sn_sc.CatItem) {
+                return false;
+            }
+
+            catalogItem = new sn_sc.CatItem(sysId);
+
+            if (catalogItem && typeof catalogItem.canViewOnSearch === 'function') {
+                canView = catalogItem.canViewOnSearch(false);
+                return canView === true || this._safeString(canView).toLowerCase() === 'true';
+            }
+
+            if (catalogItem && typeof catalogItem.isVisibleServicePortal === 'function') {
+                canView = catalogItem.isVisibleServicePortal();
+                return canView === true || this._safeString(canView).toLowerCase() === 'true';
+            }
+        } catch (ex) {
+            gs.warn('Super Search: failed to evaluate catalog item access for {0}. {1}', sysId, ex.message || ex);
+        }
+
+        return false;
+    },
+
     _storeCatalogCandidate: function(record, context, candidateMap, candidates) {
         var sysId = record.getUniqueValue();
         var candidateKey = 'catalog:' + sysId;
         var candidate;
 
         if (!sysId || candidateMap[candidateKey]) {
-            return;
+            return null;
+        }
+
+        candidateMap[candidateKey] = true;
+
+        if (!this._canCurrentUserViewCatalogItem(sysId)) {
+            return null;
         }
 
         candidate = {
@@ -1139,6 +1179,7 @@ superSearchEngine.prototype = {
 
         candidateMap[candidateKey] = candidate;
         candidates.push(candidate);
+        return candidate;
     },
 
     _storeNewsCandidate: function(record, context, candidateMap, candidates) {

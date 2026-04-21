@@ -264,6 +264,7 @@
           <li>active = true</li>
           <li>hidden_sp = false</li>
           <li>visible_sp = true</li>
+          <li>current user can view item in catalog search</li>
         </ul>
       </div>
       <div style="padding: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: #f8fafc;">
@@ -290,7 +291,7 @@
     </div>
 
     <div style="margin-top: 16px; background: #fff7ed; border-left: 4px solid #f97316; border-radius: 10px; padding: 16px 18px; color: #9a3412;">
-      <strong>Design choice:</strong> catalog items and topics are queried with <code style="background: rgba(255,255,255,0.6); padding: 2px 6px; border-radius: 6px;">GlideRecord</code> rather than <code style="background: rgba(255,255,255,0.6); padding: 2px 6px; border-radius: 6px;">GlideRecordSecure</code> so visibility follows portal configuration rules instead of raw table ACL behavior.
+      <strong>Design choice:</strong> catalog items and topics are queried with <code style="background: rgba(255,255,255,0.6); padding: 2px 6px; border-radius: 6px;">GlideRecord</code> rather than <code style="background: rgba(255,255,255,0.6); padding: 2px 6px; border-radius: 6px;">GlideRecordSecure</code> so visibility follows portal configuration rules instead of raw table ACL behavior. Catalog and record producer user criteria are enforced with the Service Catalog API before results are returned.
     </div>
   </div>
 
@@ -303,6 +304,10 @@
     <div style="padding: 18px; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc;">
       <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #0f172a;">Catalog items must be connected to visible topics</h3>
       <p style="margin: 0;">Catalog candidates are post-filtered through <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">m2m_connected_content</code>. Only items connected to topics in the current portal taxonomy are kept, which prevents the widget from surfacing catalog items that are not actually wired into the portal’s navigational model.</p>
+    </div>
+    <div style="margin-top: 14px; padding: 18px; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc;">
+      <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #0f172a;">Catalog user criteria is enforced server-side</h3>
+      <p style="margin: 0;">Catalog candidates are checked with <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px;">sn_sc.CatItem(...).canViewOnSearch(false)</code> before they are returned to the result widget. Inaccessible catalog items and record producers are kept out of result cards, paging, filters, and analytics payloads.</p>
     </div>
   </div>
 

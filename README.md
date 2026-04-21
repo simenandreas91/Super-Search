@@ -259,12 +259,14 @@ The engine applies source-specific base filters before any scoring.
 - `active = true`
 - `hidden_sp = false`
 - `visible_sp = true`
+- the current user must be able to view the item through the catalog search access check
 
 Catalog records are queried with `GlideRecord`, not `GlideRecordSecure`.
 
 Reason:
 
 - the implementation wants portal search to follow portal/service catalog visibility behavior rather than raw ACL behavior on `sc_cat_item`
+- catalog and record producer user criteria, such as Available For and Not Available For, are enforced with the Service Catalog API before results are returned
 
 ### News
 
@@ -296,6 +298,12 @@ The engine reads `m2m_sp_portal_taxonomy` for the active portal and only returns
 Catalog candidates are post-filtered through `m2m_connected_content`.
 
 Only catalog items connected to topics in the current portal taxonomy are kept. This prevents the widget from showing arbitrary catalog items that are technically searchable but not connected into the portal’s navigational model.
+
+### Catalog user criteria is enforced server-side
+
+Catalog candidates are also checked with `sn_sc.CatItem(...).canViewOnSearch(false)` before they are returned to the result widget.
+
+This keeps inaccessible record producers and catalog items out of both the visible result cards and the `allResults` payload used for paging, filters, and analytics.
 
 ## Ranking and Sorting
 
