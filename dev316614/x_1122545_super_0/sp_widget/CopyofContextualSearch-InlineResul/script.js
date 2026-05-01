@@ -13,24 +13,37 @@
 		'are': true,
 		'av': true,
 		'can': true,
+		'da': true,
+		'den': true,
+		'denne': true,
+		'det': true,
+		'dette': true,
 		'do': true,
+		'du': true,
+		'eller': true,
 		'en': true,
 		'er': true,
 		'et': true,
+		'finne': true,
 		'for': true,
 		'fra': true,
+		'hadde': true,
 		'har': true,
 		'how': true,
 		'hva': true,
 		'hvordan': true,
+		'hvis': true,
 		'i': true,
 		'is': true,
 		'jeg': true,
 		'kan': true,
 		'med': true,
 		'my': true,
+		'nar': true,
+		'når': true,
 		'of': true,
 		'og': true,
+		'om': true,
 		'on': true,
 		'or': true,
 		'paa': true,
@@ -40,6 +53,12 @@
 		'the': true,
 		'til': true,
 		'to': true,
+		'var': true,
+		'vaert': true,
+		'vi': true,
+		'vil': true,
+		'være': true,
+		'vært': true,
 		'what': true
 	};
 	var CONTEXTUAL_SYNONYM_DEFINITIONS = [
@@ -124,27 +143,27 @@
 		};
 
 		data.ariaMsgs = {
-			searchCompleted: gs.getMessage('Showing {0} search results based on field {1}'),
-			searching: gs.getMessage('Searching for {0}'),
-			loadingMoreResults: gs.getMessage('Loading more results'),
-			resultsLoaded: gs.getMessage('More results loaded'),
-			allResultsLoaded: gs.getMessage('Showing all {0} search results'),
-			noMatchingResults: gs.getMessage('No matching results found for {0}'),
-			noResultsToDisplay: gs.getMessage('No results to display')
+			searchCompleted: 'Viser {0} søkeresultater basert på feltet {1}',
+			searching: 'Søker etter {0}',
+			loadingMoreResults: 'Laster flere resultater',
+			resultsLoaded: 'Flere resultater er lastet',
+			allResultsLoaded: 'Viser alle {0} søkeresultater',
+			noMatchingResults: 'Ingen treff for {0}',
+			noResultsToDisplay: 'Ingen resultater å vise'
 		};
 
 		data.i18nMsgs = {
-			noRating: gs.getMessage('No rating'),
-			rating: gs.getMessage('{0} star rating'),
-			views: gs.getMessage('{0} views'),
-			view: gs.getMessage('{0} view'),
-			comment: gs.getMessage('{0} comment'),
-			comments: gs.getMessage('{0} comments'),
-			reply: gs.getMessage('{0} reply'),
-			replies: gs.getMessage('{0} replies'),
-			clickHere: gs.getMessage('Click here to view this result. This result will open in a new window.'),
+			noRating: 'Ingen vurdering',
+			rating: '{0} stjerner',
+			views: '{0} visninger',
+			view: '{0} visning',
+			comment: '{0} kommentar',
+			comments: '{0} kommentarer',
+			reply: '{0} svar',
+			replies: '{0} svar',
+			clickHere: 'Klikk her for å vise resultatet. Resultatet åpnes i et nytt vindu.',
 			catalog: {
-				order: gs.getMessage("Navigates to '{0}' catalog page")
+				order: "Går til katalogsiden '{0}'"
 			},
 			trueValue: gs.getMessage('true')
 		};
@@ -161,13 +180,13 @@
 		if (!config.results_header_text)
 			config.results_header_text = {};
 		if (!config.results_header_text.value)
-			config.results_header_text.value = 'Articles that may help';
+			config.results_header_text.value = 'Artikler som kan hjelpe';
 		if (!config.results_header_text.display_value)
 			config.results_header_text.display_value = config.results_header_text.value;
 		if (config.results_header_text.display_value == 'Related Search Results')
-			config.results_header_text.display_value = 'Articles that may help';
+			config.results_header_text.display_value = 'Artikler som kan hjelpe';
 		if (config.results_header_text.value == 'Related Search Results')
-			config.results_header_text.value = 'Articles that may help';
+			config.results_header_text.value = 'Artikler som kan hjelpe';
 
 		if (!config.allow_expand_collapse)
 			config.allow_expand_collapse = {};
@@ -472,7 +491,7 @@
 			domId: 'super_cxs_result_' + sysId,
 			sysId: sysId,
 			resultType: 'knowledge',
-			resultTypeLabel: result.resultTypeLabel || 'Knowledge article',
+			resultTypeLabel: result.resultTypeLabel || 'Kunnskapsartikkel',
 			number: result.number || '',
 			title: result.title || '',
 			titleHtml: result.titleHtml || result.title || '',

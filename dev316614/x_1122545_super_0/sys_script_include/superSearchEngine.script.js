@@ -34,6 +34,58 @@ superSearchEngine.prototype = {
         this.NEWS_FALLBACK_REQUIRED_RATIO = 0.7;
         this.NEWS_FALLBACK_MAX_CANDIDATES = 25;
         this.NEWS_FALLBACK_SCORE_PENALTY = 20;
+        this.SEARCH_STOP_WORDS = {
+            'a': true,
+            'an': true,
+            'and': true,
+            'at': true,
+            'av': true,
+            'da': true,
+            'de': true,
+            'den': true,
+            'denne': true,
+            'det': true,
+            'dette': true,
+            'do': true,
+            'du': true,
+            'eller': true,
+            'en': true,
+            'er': true,
+            'et': true,
+            'finne': true,
+            'for': true,
+            'fra': true,
+            'hadde': true,
+            'har': true,
+            'hva': true,
+            'hvis': true,
+            'hvordan': true,
+            'i': true,
+            'is': true,
+            'jeg': true,
+            'kan': true,
+            'med': true,
+            'nar': true,
+            'når': true,
+            'og': true,
+            'om': true,
+            'on': true,
+            'or': true,
+            'pa': true,
+            'paa': true,
+            'på': true,
+            'som': true,
+            'the': true,
+            'til': true,
+            'to': true,
+            'var': true,
+            'vaert': true,
+            'vi': true,
+            'vil': true,
+            'være': true,
+            'vært': true,
+            'what': true
+        };
         this.NEWS_FALLBACK_STOP_WORDS = {
             'a': true,
             'an': true,
@@ -56,6 +108,7 @@ superSearchEngine.prototype = {
             'the': true,
             'til': true
         };
+        this._mergeStopWords(this.NEWS_FALLBACK_STOP_WORDS, this.SEARCH_STOP_WORDS);
         this.SNIPPET_LENGTH = 180;
     },
 
@@ -299,7 +352,7 @@ superSearchEngine.prototype = {
         terms.push({
             value: cleanValue,
             normalizedValue: normalizedValue,
-            tokens: this._tokenize(normalizedValue),
+            tokens: this._getSearchableTokens(this._tokenize(normalizedValue)),
             isPrimary: isPrimary === true
         });
     },
@@ -621,6 +674,7 @@ superSearchEngine.prototype = {
 
         if (metadataFields.length > 0) {
             this._appendMultiFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, metadataFields, 'CONTAINS');
+            this._appendMultiFieldPassDefinitions(passes, seenPasses, this._getTokenSearchTerms(queryProfile.searchTerms), metadataFields, 'CONTAINS');
         }
 
         if (includeBodySearch && context.knowledgeFields.text) {
@@ -649,6 +703,7 @@ superSearchEngine.prototype = {
 
         if (metadataFields.length > 0) {
             this._appendMultiFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, metadataFields, 'CONTAINS');
+            this._appendMultiFieldPassDefinitions(passes, seenPasses, this._getTokenSearchTerms(queryProfile.searchTerms), metadataFields, 'CONTAINS');
         }
 
         if (includeBodySearch && context.catalogFields.description) {
@@ -736,6 +791,42 @@ superSearchEngine.prototype = {
                 value: searchTerms[termIndex].value
             });
         }
+    },
+
+    _getTokenSearchTerms: function(searchTerms) {
+        var tokenTerms = [];
+        var uniqueTokens = {};
+        var termIndex;
+        var tokenIndex;
+        var tokens;
+        var token;
+
+        if (!searchTerms) {
+            return tokenTerms;
+        }
+
+        for (termIndex = 0; termIndex < searchTerms.length; termIndex++) {
+            tokens = searchTerms[termIndex] && searchTerms[termIndex].tokens ? searchTerms[termIndex].tokens : [];
+
+            for (tokenIndex = 0; tokenIndex < tokens.length; tokenIndex++) {
+                token = tokens[tokenIndex];
+
+                if (!token || uniqueTokens[token]) {
+                    continue;
+                }
+
+                uniqueTokens[token] = true;
+                tokenTerms.push({
+                    value: token,
+                    normalizedValue: token,
+                    tokens: [token],
+                    isPrimary: searchTerms[termIndex].isPrimary === true,
+                    isToken: true
+                });
+            }
+        }
+
+        return tokenTerms;
     },
 
     _appendPassDefinition: function(passes, seenPasses, passDefinition) {
@@ -1360,9 +1451,9 @@ superSearchEngine.prototype = {
     },
 
     _calculateScore: function(candidate, queryProfile) {
-        var title = this._normalizeQuery(candidate.title);
-        var metadata = this._normalizeQuery(candidate.metaText);
-        var body = this._normalizeQuery(this._stripHtml(candidate.bodyText));
+        var title = this._normalizeSearchText(candidate.title);
+        var metadata = this._normalizeSearchText(candidate.metaText);
+        var body = this._normalizeSearchText(this._stripHtml(candidate.bodyText));
         var primaryTerm = queryProfile.primaryTerm;
         var score = 0;
 
@@ -1380,12 +1471,12 @@ superSearchEngine.prototype = {
         });
 
         score += this._calculateTermScore(metadata, primaryTerm, {
-            contains: 250,
-            tokenWeight: 12
+            contains: 420,
+            tokenWeight: 55
         });
         score += this._getBestSynonymScore(metadata, queryProfile.synonymTerms, {
-            contains: 110,
-            tokenWeight: 5
+            contains: 180,
+            tokenWeight: 22
         });
 
         score += this._calculateTermScore(body, primaryTerm, {
@@ -1491,7 +1582,7 @@ superSearchEngine.prototype = {
                 continue;
             }
 
-            if (haystack.indexOf(token) > -1) {
+            if (this._containsWholeToken(haystack, token)) {
                 score += tokenWeight;
                 uniqueTokens[token] = true;
             }
@@ -2134,9 +2225,67 @@ superSearchEngine.prototype = {
         return cleanTokens;
     },
 
+    _getSearchableTokens: function(tokens) {
+        var searchableTokens = [];
+        var uniqueTokens = {};
+        var index;
+        var token;
+
+        if (!tokens) {
+            return searchableTokens;
+        }
+
+        for (index = 0; index < tokens.length; index++) {
+            token = tokens[index];
+
+            if (!token ||
+                token.length < this.KNOWLEDGE_FALLBACK_MIN_TOKEN_LENGTH ||
+                this._isSearchStopWord(token) ||
+                uniqueTokens[token]) {
+                continue;
+            }
+
+            uniqueTokens[token] = true;
+            searchableTokens.push(token);
+        }
+
+        return searchableTokens;
+    },
+
+    _isSearchStopWord: function(token) {
+        return token && this.SEARCH_STOP_WORDS[token] === true;
+    },
+
+    _mergeStopWords: function(target, source) {
+        var key;
+
+        if (!target || !source) {
+            return;
+        }
+
+        for (key in source) {
+            if (source.hasOwnProperty(key)) {
+                target[key] = true;
+            }
+        }
+    },
+
+    _containsWholeToken: function(haystack, token) {
+        var escapedToken;
+        var expression;
+
+        if (!haystack || !token) {
+            return false;
+        }
+
+        escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        expression = new RegExp('(^|[^0-9a-z\\u00C0-\\u017F_])' + escapedToken + '($|[^0-9a-z\\u00C0-\\u017F_])');
+
+        return expression.test(haystack);
+    },
+
     _tokenizeForOverlap: function(value) {
-        var normalizedValue = this._normalizeQuery(value).replace(/[^0-9a-z\u00C0-\u017F_]+/g, ' ');
-        return this._tokenize(normalizedValue);
+        return this._tokenize(this._normalizeSearchText(value));
     },
 
     _getFallbackNewsTokens: function(tokens) {
@@ -2233,6 +2382,13 @@ superSearchEngine.prototype = {
 
     _normalizeQuery: function(value) {
         return this._cleanQuery(value).toLowerCase();
+    },
+
+    _normalizeSearchText: function(value) {
+        return this._normalizeQuery(value)
+            .replace(/[^0-9a-z\u00C0-\u017F_]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .replace(/^\s+|\s+$/g, '');
     },
 
     _cleanQuery: function(value) {

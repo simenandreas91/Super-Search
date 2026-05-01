@@ -32,7 +32,7 @@ api.controller = function($scope, $rootScope, $timeout, $http, modelUtil, contex
 		 * @type {string}
 		 */
 		delayedSearchTerm: null
-	}
+	};
 	cxs.display = {
 		collapsed: false
 	};
@@ -97,11 +97,11 @@ api.controller = function($scope, $rootScope, $timeout, $http, modelUtil, contex
 		if(rating == 0)
 			return c.data.i18nMsgs.noRating;
 		return i18n.format(c.data.i18nMsgs.rating, $scope.getRating(rating));
-	}
+	};
 
 	$scope.getRating = function(rating) {
 		return Math.round(rating || 0);
-	}
+	};
 
 	function hasResults(){
 		return cxs.display.results && cxs.display.results.length != 0;
@@ -490,7 +490,7 @@ api.controller = function($scope, $rootScope, $timeout, $http, modelUtil, contex
 
 	$scope.getSpLink = function(result) {
 		if (!result || !result.meta || !result.id)
-			return
+			return;
 
 		var tableName = result.id.split(":")[0];
 		var sysId = result.id.split(":")[1];
