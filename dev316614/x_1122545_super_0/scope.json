@@ -12,7 +12,7 @@
           "records": {
             "f6ae29bbc34083106b68770d05013182": {
               "name": "superSearchEngine",
-              "updated": "2026-04-20 18:38:04",
+              "updated": "2026-04-21 06:11:18",
               "codeFields": {
                 "script": {
                   "label": "Script",
@@ -70,7 +70,45 @@
             },
             "419e6d7bc34083106b68770d05013136": {
               "name": "Search results",
-              "updated": "2026-04-20 18:28:02",
+              "updated": "2026-04-29 10:46:26",
+              "codeFields": {
+                "template": {
+                  "label": "Body HTML template",
+                  "type": "html_template"
+                },
+                "css": {
+                  "label": "CSS",
+                  "type": "css"
+                },
+                "link": {
+                  "label": "Link",
+                  "type": "script"
+                },
+                "client_script": {
+                  "label": "Client controller",
+                  "type": "script"
+                },
+                "demo_data": {
+                  "label": "Demo data",
+                  "type": "json"
+                },
+                "option_schema": {
+                  "label": "Option schema",
+                  "type": "json"
+                },
+                "script": {
+                  "label": "Server script",
+                  "type": "script"
+                },
+                "_test_urls": {
+                  "label": "Test URLs",
+                  "type": "string"
+                }
+              }
+            },
+            "932ab282c3a4cb906b68770d05013142": {
+              "name": "Copy of Contextual Search - Inline Resul",
+              "updated": "2026-05-01 04:24:58",
               "codeFields": {
                 "template": {
                   "label": "Body HTML template",
@@ -141,6 +179,65 @@
               },
               "referenceFields": {
                 "sp_widget": "419e6d7bc34083106b68770d05013136"
+              }
+            }
+          }
+        }
+      }
+    },
+    "other": {
+      "type": "tables",
+      "tables": {
+        "item_option_new": {
+          "type": "records",
+          "records": {
+            "2289b202c3a4cb906b68770d05013102": {
+              "name": "Contextual Search Results",
+              "updated": "2026-05-01 04:25:26",
+              "codeFields": {
+                "rich_text": {
+                  "label": "Rich Text",
+                  "type": "translated_html"
+                },
+                "default_html_value": {
+                  "label": "Default HTML",
+                  "type": "html"
+                },
+                "instructions": {
+                  "label": "Instructions",
+                  "type": "translated_html"
+                },
+                "save_script": {
+                  "label": "Save script",
+                  "type": "script_plain"
+                },
+                "read_script": {
+                  "label": "Read script",
+                  "type": "script_plain"
+                },
+                "description": {
+                  "label": "Description",
+                  "type": "html"
+                },
+                "post_insert_script": {
+                  "label": "Post insert script",
+                  "type": "script_plain"
+                }
+              }
+            }
+          }
+        },
+        "cxs_ui_action_config": {
+          "type": "records",
+          "records": {
+            "2689b202c3a4cb906b68770d0501313b": {
+              "name": "This helped",
+              "updated": "2026-05-01 04:22:11",
+              "codeFields": {
+                "ui_action_visibility_script": {
+                  "label": "UI action visibility script",
+                  "type": "script"
+                }
               }
             }
           }

@@ -1,0 +1,106 @@
+<section ng-if="cxs.response" class="cxs-results-panel" ng-class="::{'sp-cxs-a11y': c.data.isA11yEnabled}">
+  <button
+    type="button"
+    class="cxs-results-title-bar"
+    ng-if="cxs.config.allow_expand_collapse.value"
+    ng-click="toggleExpandCollapse()"
+    ng-attr-aria-expanded="{{!cxs.display.collapsed}}"
+    aria-label="{{cxs.config.results_header_text.display_value}}">
+    <span class="cxs-results-title">
+      <span class="cxs-results-title-icon" aria-hidden="true"><i class="fa fa-book"></i></span>
+      <span>{{cxs.config.results_header_text.display_value}}</span>
+      <span class="cxs-results-count" ng-if="cxs.response.meta.total">{{cxs.response.meta.total}}</span>
+    </span>
+    <i ng-class="['cxs-ec-chevron','fa',{'fa-chevron-down': cxs.display.collapsed, 'fa-chevron-up': !cxs.display.collapsed}]"></i>
+  </button>
+
+  <div class="cxs-results-title-bar cxs-results-title-bar--static" ng-if="!cxs.config.allow_expand_collapse.value">
+    <span class="cxs-results-title">
+      <span class="cxs-results-title-icon" aria-hidden="true"><i class="fa fa-book"></i></span>
+      <span>{{cxs.config.results_header_text.display_value}}</span>
+      <span class="cxs-results-count" ng-if="cxs.response.meta.total">{{cxs.response.meta.total}}</span>
+    </span>
+  </div>
+
+  <div ng-show="!cxs.display.result_detail && cxs.display.results && !cxs.display.collapsed" class="cxs-results">
+    <div class="cxs-loading" ng-if="cxs.display.loading">
+      <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
+      <span>${Searching}</span>
+    </div>
+
+    <article
+      ng-repeat="result in cxs.display.results track by result.id"
+      class="cxs-result-card"
+      id="{{::result.domId}}">
+      <div class="cxs-result-main">
+        <div class="cxs-result-kicker">
+          <span class="cxs-result-type">{{::result.resultTypeLabel}}</span>
+          <span class="cxs-result-chip" ng-if="result.number">{{::result.number}}</span>
+          <span class="cxs-result-chip" ng-if="result.updatedOnDisplay">${Updated} {{::result.updatedOnDisplay}}</span>
+        </div>
+
+        <h3 class="cxs-result-title">
+          <a id="{{::cxs.RESULT_TITLE_ID + $index}}" href="{{::result.sp_link || result.link}}" ng-click="displayDetail($index, $event)" ng-bind-html="::result.titleHtml"></a>
+        </h3>
+
+        <p class="cxs-result-snippet" ng-if="result.snippetHtml" ng-bind-html="::result.snippetHtml"></p>
+
+        <div class="cxs-result-meta" ng-if="result.kbName || result.categoryName">
+          <span ng-if="result.kbName"><i class="fa fa-folder-open-o" aria-hidden="true"></i> {{::result.kbName}}</span>
+          <span ng-if="result.categoryName"><i class="fa fa-tag" aria-hidden="true"></i> {{::result.categoryName}}</span>
+        </div>
+      </div>
+
+      <div class="cxs-result-actions">
+        <button type="button" class="btn btn-default cxs-action-button" ng-click="displayDetail($index, $event)">
+          <i class="fa fa-eye" aria-hidden="true"></i>
+          <span>${Preview}</span>
+        </button>
+        <a class="btn btn-link cxs-open-link" ng-href="{{::result.sp_link || result.link}}" target="_blank" rel="noopener">
+          <i class="fa fa-external-link" aria-hidden="true"></i>
+          <span class="sr-only">${Open}</span>
+        </a>
+      </div>
+    </article>
+
+    <div class="cxs-results-button-bar" ng-if="hasMoreResults()">
+      <button class="btn btn-default cxs-show-more" ng-click="getMoreResults()" ng-disabled="cxs.display.loadingMore" aria-label="${Shows more search results}">
+        <i class="fa" ng-class="{'fa-spinner fa-spin': cxs.display.loadingMore, 'fa-chevron-down': !cxs.display.loadingMore}" aria-hidden="true"></i>
+        <span>${Show more}</span>
+      </button>
+    </div>
+
+    <div class="cxs-empty-state" ng-if="(!cxs.display.results || cxs.display.results.length == 0) && !cxs.display.loading">
+      <i class="fa fa-search" aria-hidden="true"></i>
+      <p>${No matching results found for {{cxs.response.request.query.freetext}}}</p>
+    </div>
+  </div>
+
+  <div ng-if="cxs.display.result_detail && !cxs.display.collapsed" class="cxs-detail-container">
+    <div class="cxs-detail-header">
+      <button type="button" class="btn btn-link cxs-back-button" ng-click="backToResults()">
+        <i class="fa fa-arrow-left" aria-hidden="true"></i>
+        <span>${Back to results}</span>
+      </button>
+      <a class="btn btn-default cxs-open-article" ng-href="{{cxs.display.result.sp_link || getSpLink(cxs.display.result)}}" target="_blank" rel="noopener">
+        <i class="fa fa-external-link" aria-hidden="true"></i>
+        <span>${Open article}</span>
+      </a>
+    </div>
+
+    <article class="cxs-detail-article">
+      <div class="cxs-result-kicker">
+        <span class="cxs-result-type">${Knowledge article}</span>
+        <span class="cxs-result-chip" ng-if="cxs.display.result.number">{{cxs.display.result.number}}</span>
+        <span class="cxs-result-chip" ng-if="cxs.display.result.updatedOnDisplay">${Updated} {{cxs.display.result.updatedOnDisplay}}</span>
+      </div>
+      <h3 class="cxs-detail-title" ng-bind="cxs.display.result_detail.short_description.display_value || cxs.display.result.title"></h3>
+      <div class="cxs-detail-body article-content" ng-if="cxs.display.result_detail.text.display_value" ng-bind-html="cxsTrust(cxs.display.result_detail.text.display_value)"></div>
+      <p class="cxs-result-snippet" ng-if="!cxs.display.result_detail.text.display_value && cxs.display.result.snippetHtml" ng-bind-html="cxs.display.result.snippetHtml"></p>
+    </article>
+  </div>
+</section>
+<!-- Start - Accessibility specific DOM -->
+	<div id='sp_cxs_aria_status' aria-live="assertive" aria-atomic = "true">
+	</div>
+<!--End - Accessibility specific DOM -->
