@@ -4,6 +4,36 @@
     "sysId": "965dedb7c34083106b68770d05013185"
   },
   "scopeTree": {
+    "i13_inbound_integrations": {
+      "type": "tables",
+      "tables": {
+        "sys_ws_operation": {
+          "type": "records",
+          "records": {
+            "3b12a09ac3a80f906b68770d050131a9": {
+              "name": "Get token",
+              "updated": "2026-05-01 11:59:54",
+              "codeFields": {
+                "operation_script": {
+                  "label": "Script",
+                  "type": "script"
+                }
+              }
+            },
+            "e2a16c5ac3a80f906b68770d0501314c": {
+              "name": "app",
+              "updated": "2026-05-01 11:58:28",
+              "codeFields": {
+                "operation_script": {
+                  "label": "Script",
+                  "type": "script"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "i2_server_development": {
       "type": "tables",
       "tables": {
@@ -12,7 +42,7 @@
           "records": {
             "f6ae29bbc34083106b68770d05013182": {
               "name": "superSearchEngine",
-              "updated": "2026-04-21 06:11:18",
+              "updated": "2026-05-01 11:11:02",
               "codeFields": {
                 "script": {
                   "label": "Script",
@@ -108,7 +138,7 @@
             },
             "932ab282c3a4cb906b68770d05013142": {
               "name": "Super search - Contextual Search",
-              "updated": "2026-05-01 06:16:47",
+              "updated": "2026-05-01 11:11:00",
               "codeFields": {
                 "template": {
                   "label": "Body HTML template",

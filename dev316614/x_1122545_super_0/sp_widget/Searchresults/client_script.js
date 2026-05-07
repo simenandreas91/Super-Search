@@ -8,6 +8,12 @@ api.controller = function($window) {
     return (value || '').replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
   };
 
+  c.parsePositiveInteger = function(value, defaultValue) {
+    var parsedValue = parseInt(value, 10);
+
+    return isNaN(parsedValue) || parsedValue < 1 ? defaultValue : parsedValue;
+  };
+
   c.normalizeFilter = function(value) {
     var normalizedValue = String(value || 'all').toLowerCase();
 
@@ -65,14 +71,11 @@ api.controller = function($window) {
       return search;
     }
 
+    search.pageSize = c.parsePositiveInteger(search.pageSize, 10);
     nextFilter = c.normalizeFilter(request && typeof request.resultFilter !== 'undefined' ? request.resultFilter : search.activeFilter);
     filteredResults = c.getFilteredResults(search, nextFilter);
     totalPages = filteredResults.length ? Math.ceil(filteredResults.length / search.pageSize) : 0;
-    nextPage = parseInt(request && typeof request.page !== 'undefined' ? request.page : search.page, 10);
-
-    if (isNaN(nextPage) || nextPage < 1) {
-      nextPage = 1;
-    }
+    nextPage = c.parsePositiveInteger(request && typeof request.page !== 'undefined' ? request.page : search.page, 1);
 
     if (totalPages > 0 && nextPage > totalPages) {
       nextPage = totalPages;
@@ -100,12 +103,10 @@ api.controller = function($window) {
       preparedSearch.allResults = angular.isArray(preparedSearch.results) ? preparedSearch.results.slice(0) : [];
     }
 
-    if (!preparedSearch.pageSize || preparedSearch.pageSize < 1) {
-      preparedSearch.pageSize = 10;
-    }
+    preparedSearch.pageSize = c.parsePositiveInteger(preparedSearch.pageSize, 10);
 
     preparedSearch.activeFilter = c.normalizeFilter(preparedSearch.activeFilter);
-    preparedSearch.page = parseInt(preparedSearch.page, 10) || 1;
+    preparedSearch.page = c.parsePositiveInteger(preparedSearch.page, 1);
 
     return c.applyClientState(preparedSearch, {
       page: preparedSearch.page,
@@ -162,12 +163,14 @@ api.controller = function($window) {
   };
 
   c.goToPage = function(page) {
-    if (c.isLoading || !c.search || page < 1 || page > c.search.totalPages || page === c.search.page) {
+    var nextPage = c.parsePositiveInteger(page, 1);
+
+    if (c.isLoading || !c.search || nextPage > c.search.totalPages || nextPage === c.search.page) {
       return;
     }
 
     c.updateLocalResults({
-      page: page
+      page: nextPage
     });
   };
 
@@ -388,6 +391,7 @@ api.controller = function($window) {
     $window.history.replaceState(null, '', nextUrl);
   };
 
+  c.initialRequestedPage = c.parsePositiveInteger(c.data.search && c.data.search.page, 1);
   c.search = c.prepareSearch(c.data.search);
   c.inlineSearchTerm = c.search && c.search.query ? c.search.query : '';
 
@@ -395,7 +399,7 @@ api.controller = function($window) {
     c.isLoading = true;
     c.executeSearch({
       query: c.search.query,
-      page: c.search.page,
+      page: c.initialRequestedPage,
       resultFilter: c.search.activeFilter
     });
   }
