@@ -325,6 +325,7 @@ Current scoring bias:
 - Body text is lowest weight
 - Synonym matches score below direct matches
 - Fallback news matches receive a penalty
+- Knowledge articles about `stillingsbeskrivelse` are demoted unless the query itself is for stillingsbeskrivelse
 
 ### Type priority
 

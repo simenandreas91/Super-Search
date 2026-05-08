@@ -34,6 +34,8 @@ superSearchEngine.prototype = {
         this.NEWS_FALLBACK_REQUIRED_RATIO = 0.7;
         this.NEWS_FALLBACK_MAX_CANDIDATES = 25;
         this.NEWS_FALLBACK_SCORE_PENALTY = 20;
+        this.JOB_DESCRIPTION_MARKER = 'stillingsbeskriv';
+        this.JOB_DESCRIPTION_SCORE_PENALTY = 500;
         this.SEARCH_STOP_WORDS = {
             'a': true,
             'an': true,
@@ -1492,7 +1494,46 @@ superSearchEngine.prototype = {
             score -= this.NEWS_FALLBACK_SCORE_PENALTY;
         }
 
+        if (this._shouldDemoteJobDescriptionCandidate(candidate, queryProfile)) {
+            score = Math.max(1, score - this.JOB_DESCRIPTION_SCORE_PENALTY);
+        }
+
         return score;
+    },
+
+    _shouldDemoteJobDescriptionCandidate: function(candidate, queryProfile) {
+        if (!candidate || candidate.resultType !== 'knowledge') {
+            return false;
+        }
+
+        if (this._isJobDescriptionSearch(queryProfile)) {
+            return false;
+        }
+
+        return this._isJobDescriptionCandidate(candidate);
+    },
+
+    _isJobDescriptionSearch: function(queryProfile) {
+        var searchTerms = queryProfile && queryProfile.searchTerms ? queryProfile.searchTerms : [];
+        var index;
+
+        for (index = 0; index < searchTerms.length; index++) {
+            if (this._containsJobDescriptionMarker(searchTerms[index].normalizedValue)) {
+                return true;
+            }
+        }
+
+        return false;
+    },
+
+    _isJobDescriptionCandidate: function(candidate) {
+        return this._containsJobDescriptionMarker(candidate.title) ||
+            this._containsJobDescriptionMarker(candidate.metaText) ||
+            this._containsJobDescriptionMarker(this._stripHtml(candidate.bodyText));
+    },
+
+    _containsJobDescriptionMarker: function(value) {
+        return this._normalizeSearchText(value).indexOf(this.JOB_DESCRIPTION_MARKER) > -1;
     },
 
     _getResultTypePriority: function(candidate) {
