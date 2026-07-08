@@ -23,3 +23,8 @@
 .github/agents/NowDev-AI-Reviewer.agent.md
 .github/agents/NowDev-AI-Script-Developer.agent.md
 .github/agents/NowDev-AI.agent.md
+.vscode/nowdev-ai-session/
+.github/instructions/nowdev-ai.instructions.md
+.github/prompts/nowdev-start.prompt.md
+.github/prompts/nowdev-review.prompt.md
+.github/prompts/nowdev-compact.prompt.md
