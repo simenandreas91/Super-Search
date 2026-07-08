@@ -7,7 +7,6 @@
       <h2 class="super-search-widget__greeting" ng-if="::!c.data.greetingName">
         Hei, hva leter du etter?
       </h2>
-
     </div>
 
     <div class="super-search-widget__surface">
@@ -29,6 +28,17 @@
           </button>
         </div>
       </div>
+    </div>
+    <div class="super-search-widget__filter-list" ng-if="::!c.data.config.compactMode" role="group" aria-label="Velg søkekategori">
+      <button
+        type="button"
+        class="super-search-widget__filter-pill"
+        ng-repeat="option in c.data.filterOptions track by option.id"
+        ng-class="{'super-search-widget__filter-pill--active': c.selectedFilter === option.id}"
+        ng-click="c.selectFilter(option.id)"
+        ng-attr-aria-pressed="{{c.selectedFilter === option.id}}">
+        {{::option.label}}
+      </button>
     </div>
   </form>
 </div>

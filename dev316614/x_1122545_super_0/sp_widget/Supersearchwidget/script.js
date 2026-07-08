@@ -21,14 +21,6 @@
     },
     {
       id: 'knowledge_total',
-      label: 'Kunnskapsartikler'
-    },
-    {
-      id: 'featured_kb',
-      label: 'Styrende dokumenter'
-    },
-    {
-      id: 'knowledge_articles',
       label: 'Artikler'
     },
     {
@@ -37,15 +29,15 @@
     },
     {
       id: 'catalog_item',
-      label: 'Bestillinger og skjema'
+      label: 'Henvendelser'
     },
     {
       id: 'sys_user',
-      label: 'Finn kollegaen min'
+      label: 'Personer'
     },
     {
       id: 'topic',
-      label: 'Områdesider'
+      label: 'Områder'
     }
   ];
 
@@ -56,7 +48,7 @@
   function normalizeFilter(value) {
     var normalizedValue = String(value || 'all').toLowerCase();
 
-    if (normalizedValue === 'knowledge') {
+    if (normalizedValue === 'knowledge' || normalizedValue === 'featured_kb' || normalizedValue === 'knowledge_articles') {
       return 'knowledge_total';
     }
 

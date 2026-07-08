@@ -6,6 +6,7 @@ api.controller = function($window, $scope, $location) {
 
   c.submitSearch = function() {
     var searchTerm = c.normalizeTerm(c.searchTerm);
+    var selectedFilter = c.normalizeFilter(c.selectedFilter);
     var targetUrl;
 
     if (!searchTerm) {
@@ -13,6 +14,10 @@ api.controller = function($window, $scope, $location) {
     }
 
     targetUrl = '?id=' + encodeURIComponent(c.data.config.resultsPageId) + '&q=' + encodeURIComponent(searchTerm);
+
+    if (selectedFilter !== 'all') {
+      targetUrl += '&filter=' + encodeURIComponent(selectedFilter);
+    }
 
     $window.location.href = targetUrl;
   };
@@ -24,7 +29,7 @@ api.controller = function($window, $scope, $location) {
   c.normalizeFilter = function(value) {
     var normalizedValue = String(value || 'all').toLowerCase();
 
-    if (normalizedValue === 'knowledge') {
+    if (normalizedValue === 'knowledge' || normalizedValue === 'featured_kb' || normalizedValue === 'knowledge_articles') {
       return 'knowledge_total';
     }
 
@@ -35,8 +40,14 @@ api.controller = function($window, $scope, $location) {
     return 'all';
   };
 
+  c.selectedFilter = c.normalizeFilter(c.data.initialFilter);
+
+  c.selectFilter = function(filterId) {
+    c.selectedFilter = c.normalizeFilter(filterId);
+  };
+
   $scope.$on('$locationChangeSuccess', function() {
     c.searchTerm = c.normalizeTerm($location.search().q || '');
-    c.selectedFilter = 'all';
+    c.selectedFilter = c.normalizeFilter($location.search().filter || c.data.initialFilter);
   });
 };
