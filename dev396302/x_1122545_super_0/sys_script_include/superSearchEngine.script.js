@@ -1660,7 +1660,7 @@ superSearchEngine.prototype = {
         if (candidate.isFeaturedKnowledgeBase) {
             return {
                 key: 'featured_kb',
-                className: 'fa-gavel',
+                className: 'fa-book',
                 label: 'Utvalgt kunnskapsbase'
             };
         }
@@ -1676,7 +1676,7 @@ superSearchEngine.prototype = {
         if (candidate.resultType === 'catalog_item') {
             return {
                 key: 'catalog_item',
-                className: 'fa-clipboard',
+                className: 'fa-shopping-cart',
                 label: candidate.resultTypeLabel || 'Bestilling'
             };
         }
@@ -1684,7 +1684,7 @@ superSearchEngine.prototype = {
         if (candidate.resultType === 'sys_user') {
             return {
                 key: 'sys_user',
-                className: 'fa-user',
+                className: 'fa-user-o',
                 label: candidate.resultTypeLabel || 'Ansatt'
             };
         }
@@ -1699,7 +1699,7 @@ superSearchEngine.prototype = {
 
         return {
             key: 'knowledge',
-            className: 'fa-book',
+            className: 'fa-file-text-o',
             label: 'Kunnskapsartikkel'
         };
     },

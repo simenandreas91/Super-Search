@@ -146,19 +146,7 @@
             ng-repeat="result in c.search.results track by (result.resultType + ':' + result.sysId)"
             role="link"
             tabindex="0">
-            <div class="super-search-results__item-top">
-              <span
-                class="super-search-results__type-badge"
-                ng-class="{'super-search-results__type-badge--request': result.isRequestItem, 'super-search-results__type-badge--news': result.isNewsItem, 'super-search-results__type-badge--user': result.isUser, 'super-search-results__type-badge--topic': result.isTopic}"
-                ng-if="result.resultTypeLabel"
-                ng-bind="result.resultTypeLabel"></span>
-              <span class="super-search-results__meta-chip" ng-if="result.showUpdatedDate && result.updatedOnDisplay">
-                Oppdatert {{::result.updatedOnDisplay}}
-              </span>
-              <span class="super-search-results__meta-chip" ng-if="result.number" ng-bind="result.number"></span>
-              <span class="super-search-results__meta-chip" ng-if="result.kbName" ng-bind="result.kbName"></span>
-            </div>
-            <div class="super-search-results__title-row">
+            <div class="super-search-results__item-icon-col">
               <span
                 class="super-search-results__icon"
                 ng-class="{
@@ -174,24 +162,38 @@
                 aria-hidden="true">
                 <i class="fa" ng-class="result.iconClass"></i>
               </span>
+            </div>
+            <div class="super-search-results__item-content">
+              <div class="super-search-results__item-top">
+                <span
+                  class="super-search-results__type-badge"
+                  ng-class="{'super-search-results__type-badge--request': result.isRequestItem, 'super-search-results__type-badge--news': result.isNewsItem, 'super-search-results__type-badge--user': result.isUser, 'super-search-results__type-badge--topic': result.isTopic, 'super-search-results__type-badge--featured-kb': result.iconKey === 'featured_kb'}"
+                  ng-if="result.resultTypeLabel"
+                  ng-bind="result.resultTypeLabel"></span>
+                <span class="super-search-results__meta-chip" ng-if="result.showUpdatedDate && result.updatedOnDisplay">
+                  Oppdatert {{::result.updatedOnDisplay}}
+                </span>
+                <span class="super-search-results__meta-chip" ng-if="result.number" ng-bind="result.number"></span>
+                <span class="super-search-results__meta-chip" ng-if="result.kbName" ng-bind="result.kbName"></span>
+              </div>
               <h3 class="super-search-results__item-title">
                 <a ng-href="{{::result.url}}" ng-click="$event.preventDefault(); $event.stopPropagation(); c.openResult(result, $index, $event)" ng-bind-html="::result.titleHtml"></a>
               </h3>
+              <div class="super-search-results__person-details" ng-if="result.isUser">
+                <p class="super-search-results__person-field" ng-if="result.employeeTitle">
+                  <span class="super-search-results__person-label">Stilling</span>
+                  <span ng-bind-html="::result.employeeTitleHtml"></span>
+                </p>
+                <p class="super-search-results__person-field" ng-if="result.departmentName">
+                  <span class="super-search-results__person-label">Gruppe/program</span>
+                  <span ng-bind-html="::result.departmentNameHtml"></span>
+                </p>
+              </div>
+              <div class="super-search-results__meta" ng-if="result.catalogName">
+                <span class="super-search-results__meta-chip" ng-if="result.catalogName" ng-bind="result.catalogName"></span>
+              </div>
+              <p class="super-search-results__snippet" ng-if="result.snippet && !result.isUser" ng-bind-html="::result.snippetHtml"></p>
             </div>
-            <div class="super-search-results__person-details" ng-if="result.isUser">
-              <p class="super-search-results__person-field" ng-if="result.employeeTitle">
-                <span class="super-search-results__person-label">Stilling</span>
-                <span ng-bind-html="::result.employeeTitleHtml"></span>
-              </p>
-              <p class="super-search-results__person-field" ng-if="result.departmentName">
-                <span class="super-search-results__person-label">Gruppe/program</span>
-                <span ng-bind-html="::result.departmentNameHtml"></span>
-              </p>
-            </div>
-            <div class="super-search-results__meta" ng-if="result.catalogName">
-              <span class="super-search-results__meta-chip" ng-if="result.catalogName" ng-bind="result.catalogName"></span>
-            </div>
-            <p class="super-search-results__snippet" ng-if="result.snippet && !result.isUser" ng-bind-html="::result.snippetHtml"></p>
           </article>
         </div>
 
