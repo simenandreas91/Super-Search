@@ -29,7 +29,7 @@
     },
     {
       id: 'catalog_item',
-      label: 'Henvendelser'
+      label: 'Bestillinger og skjema'
     },
     {
       id: 'sys_user',
