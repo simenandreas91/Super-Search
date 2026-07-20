@@ -228,6 +228,7 @@
 			portalSysId: portalSysId,
 			featuredKnowledgeBaseId: options.featured_knowledge_base_id || '',
 			featuredKnowledgeBaseLabel: options.featured_knowledge_base_label || '',
+			knowledgeOnly: true,
 			resultFilter: 'knowledge_total'
 		});
 
@@ -266,6 +267,7 @@
 				portalSysId: portalSysId,
 				featuredKnowledgeBaseId: options.featured_knowledge_base_id || '',
 				featuredKnowledgeBaseLabel: options.featured_knowledge_base_label || '',
+				knowledgeOnly: true,
 				resultFilter: 'knowledge_total'
 			});
 

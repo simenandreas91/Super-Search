@@ -129,6 +129,7 @@ superSearchEngine.prototype = {
         var featuredTopicId = this._safeString(request.featuredTopicId);
         var resultFilter = this._normalizeResultFilter(request.resultFilter);
         var includeBodySearch = this._toBoolean(request.includeBodySearch);
+        var knowledgeOnly = this._toBoolean(request.knowledgeOnly);
         var shortQueryLength = this._clampInteger(request.shortQueryLength, this.DEFAULT_SHORT_QUERY_LENGTH, 1, 10);
         var shortQueryCandidateLimit = this._clampInteger(request.shortQueryCandidateLimit, this.DEFAULT_SHORT_QUERY_CANDIDATE_LIMIT, 1, this.MAX_CANDIDATE_LIMIT);
         var shortQueryResultLimit = this._clampInteger(request.shortQueryResultLimit, this.DEFAULT_SHORT_QUERY_RESULT_LIMIT, 1, this.MAX_CANDIDATE_LIMIT);
@@ -152,7 +153,6 @@ superSearchEngine.prototype = {
         var queryProfile;
         var searchStrategy;
         var scoredCandidates;
-        var pagedCandidates;
         var startIndex;
 
         if (!normalizedQuery) {
@@ -162,14 +162,15 @@ superSearchEngine.prototype = {
         context = this._buildContext(articlePageId, catalogItemPageId, newsPageId, newsContentTypeId, portalSysId, featuredKnowledgeBaseId, featuredKnowledgeBaseLabel, featuredTopicId);
         queryProfile = this._buildQueryProfile(query, normalizedQuery, synonymDictionaryId);
         searchStrategy = this._buildSearchStrategy(queryProfile, candidateLimit, pageSize, includeBodySearch, shortQueryLength, shortQueryCandidateLimit, shortQueryResultLimit);
+        knowledgeOnly = knowledgeOnly && !searchStrategy.isShortQuery;
         response.querySummaryLabel = this._buildQuerySummaryLabel(queryProfile.searchTerms);
         response.hasSynonymExpansion = queryProfile.synonymTerms.length > 0;
         response.pageSize = searchStrategy.pageSize;
-        scoredCandidates = this._getScoredCandidates(context, queryProfile, searchStrategy.candidateLimit, searchStrategy.includeBodySearch);
+        scoredCandidates = this._getScoredCandidates(context, queryProfile, searchStrategy.candidateLimit, searchStrategy.includeBodySearch, knowledgeOnly);
         scoredCandidates = this._limitResults(scoredCandidates, searchStrategy.resultLimit);
         response.filters = this._buildFilterSummary(scoredCandidates, context);
         response.allResults = this._shapeResults(scoredCandidates, queryProfile, context);
-        scoredCandidates = this._applyResultFilter(scoredCandidates, resultFilter);
+        scoredCandidates = this._applyResultFilter(response.allResults, resultFilter);
         response.total = scoredCandidates.length;
         response.totalPages = response.total > 0 ? Math.ceil(response.total / response.pageSize) : 0;
 
@@ -183,9 +184,8 @@ superSearchEngine.prototype = {
         }
 
         startIndex = (response.page - 1) * response.pageSize;
-        pagedCandidates = scoredCandidates.slice(startIndex, startIndex + response.pageSize);
         response.hasMore = response.page < response.totalPages;
-        response.results = this._shapeResults(pagedCandidates, queryProfile, context);
+        response.results = this._cloneShapedResults(scoredCandidates, startIndex, startIndex + response.pageSize);
 
         return response;
     },
@@ -276,7 +276,8 @@ superSearchEngine.prototype = {
         return {
             primaryTerm: searchTerms[0],
             synonymTerms: searchTerms.slice(1),
-            searchTerms: searchTerms
+            searchTerms: searchTerms,
+            tokenSearchTerms: this._getTokenSearchTerms(searchTerms)
         };
     },
 
@@ -406,6 +407,8 @@ superSearchEngine.prototype = {
 
     _applySynonymPrefilter: function(record, normalizedQuery, tokens) {
         var condition;
+        var uniqueTokens = {};
+        var tokenKey;
         var index;
         var token;
 
@@ -413,11 +416,13 @@ superSearchEngine.prototype = {
 
         for (index = 0; index < tokens.length; index++) {
             token = tokens[index];
+            tokenKey = 'token:' + token;
 
-            if (!token || token.length < 2 || token === normalizedQuery) {
+            if (!token || token.length < 2 || token === normalizedQuery || uniqueTokens[tokenKey]) {
                 continue;
             }
 
+            uniqueTokens[tokenKey] = true;
             condition.addOrCondition('synset', 'CONTAINS', token);
         }
     },
@@ -530,18 +535,32 @@ superSearchEngine.prototype = {
         return tokenMap;
     },
 
-    _getScoredCandidates: function(context, queryProfile, candidateLimit, includeBodySearch) {
+    _getScoredCandidates: function(context, queryProfile, candidateLimit, includeBodySearch, knowledgeOnly) {
         var knowledgeLimit = this._clampInteger(Math.ceil(candidateLimit * 0.5), candidateLimit, 1, candidateLimit);
-        var catalogLimit = this._clampInteger(Math.ceil(candidateLimit * 0.3), candidateLimit, 1, candidateLimit);
-        var newsLimit = this._clampInteger(Math.ceil(candidateLimit * 0.25), candidateLimit, 1, candidateLimit);
-        var userLimit = this._clampInteger(Math.ceil(candidateLimit * 0.35), candidateLimit, 1, candidateLimit);
-        var topicLimit = this._clampInteger(Math.ceil(candidateLimit * 0.25), candidateLimit, 1, candidateLimit);
         var knowledgeCandidates = this._getKnowledgeCandidates(context, queryProfile, knowledgeLimit, includeBodySearch);
-        var catalogCandidates = this._getCatalogCandidates(context, queryProfile, catalogLimit, includeBodySearch);
-        var newsCandidates = this._getNewsCandidates(context, queryProfile, newsLimit);
-        var userCandidates = this._getUserCandidates(context, queryProfile, userLimit);
-        var topicCandidates = this._getTopicCandidates(context, queryProfile, topicLimit, includeBodySearch);
-        var mergedCandidates = knowledgeCandidates.concat(catalogCandidates, newsCandidates, userCandidates, topicCandidates);
+        var catalogLimit;
+        var newsLimit;
+        var userLimit;
+        var topicLimit;
+        var catalogCandidates;
+        var newsCandidates;
+        var userCandidates;
+        var topicCandidates;
+        var mergedCandidates;
+
+        if (knowledgeOnly === true) {
+            return this._scoreAndSortCandidates(knowledgeCandidates, queryProfile);
+        }
+
+        catalogLimit = this._clampInteger(Math.ceil(candidateLimit * 0.3), candidateLimit, 1, candidateLimit);
+        newsLimit = this._clampInteger(Math.ceil(candidateLimit * 0.25), candidateLimit, 1, candidateLimit);
+        userLimit = this._clampInteger(Math.ceil(candidateLimit * 0.35), candidateLimit, 1, candidateLimit);
+        topicLimit = this._clampInteger(Math.ceil(candidateLimit * 0.25), candidateLimit, 1, candidateLimit);
+        catalogCandidates = this._getCatalogCandidates(context, queryProfile, catalogLimit, includeBodySearch);
+        newsCandidates = this._getNewsCandidates(context, queryProfile, newsLimit);
+        userCandidates = this._getUserCandidates(context, queryProfile, userLimit);
+        topicCandidates = this._getTopicCandidates(context, queryProfile, topicLimit, includeBodySearch);
+        mergedCandidates = knowledgeCandidates.concat(catalogCandidates, newsCandidates, userCandidates, topicCandidates);
 
         return this._scoreAndSortCandidates(mergedCandidates, queryProfile);
     },
@@ -674,7 +693,7 @@ superSearchEngine.prototype = {
 
         if (metadataFields.length > 0) {
             this._appendMultiFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, metadataFields, 'CONTAINS');
-            this._appendMultiFieldPassDefinitions(passes, seenPasses, this._getTokenSearchTerms(queryProfile.searchTerms), metadataFields, 'CONTAINS');
+            this._appendMultiFieldPassDefinitions(passes, seenPasses, (queryProfile.tokenSearchTerms || this._getTokenSearchTerms(queryProfile.searchTerms)), metadataFields, 'CONTAINS');
         }
 
         if (includeBodySearch && context.knowledgeFields.text) {
@@ -691,7 +710,7 @@ superSearchEngine.prototype = {
 
         if (context.catalogFields.name) {
             this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'name', ['=', 'STARTSWITH', 'CONTAINS']);
-            this._appendFieldPassDefinitions(passes, seenPasses, this._getTokenSearchTerms(queryProfile.searchTerms), 'name', ['STARTSWITH', 'CONTAINS']);
+            this._appendFieldPassDefinitions(passes, seenPasses, (queryProfile.tokenSearchTerms || this._getTokenSearchTerms(queryProfile.searchTerms)), 'name', ['STARTSWITH', 'CONTAINS']);
         }
 
         if (context.catalogFields.shortDescription) {
@@ -704,7 +723,7 @@ superSearchEngine.prototype = {
 
         if (metadataFields.length > 0) {
             this._appendMultiFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, metadataFields, 'CONTAINS');
-            this._appendMultiFieldPassDefinitions(passes, seenPasses, this._getTokenSearchTerms(queryProfile.searchTerms), metadataFields, 'CONTAINS');
+            this._appendMultiFieldPassDefinitions(passes, seenPasses, (queryProfile.tokenSearchTerms || this._getTokenSearchTerms(queryProfile.searchTerms)), metadataFields, 'CONTAINS');
         }
 
         if (includeBodySearch && context.catalogFields.description) {
@@ -758,7 +777,7 @@ superSearchEngine.prototype = {
 
         if (context.topicFields.name) {
             this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'name', ['=', 'STARTSWITH', 'CONTAINS']);
-            this._appendFieldPassDefinitions(passes, seenPasses, this._getTokenSearchTerms(queryProfile.searchTerms), 'name', ['STARTSWITH', 'CONTAINS']);
+            this._appendFieldPassDefinitions(passes, seenPasses, (queryProfile.tokenSearchTerms || this._getTokenSearchTerms(queryProfile.searchTerms)), 'name', ['STARTSWITH', 'CONTAINS']);
         }
 
         if (includeBodySearch && context.topicFields.description) {
@@ -1242,6 +1261,8 @@ superSearchEngine.prototype = {
         var sysId = record.getUniqueValue();
         var candidateKey = 'catalog:' + sysId;
         var candidate;
+        var categoryName;
+        var catalogName;
 
         if (!sysId || candidateMap[candidateKey]) {
             return null;
@@ -1253,6 +1274,8 @@ superSearchEngine.prototype = {
             return null;
         }
 
+        categoryName = context.catalogFields.category ? this._safeString(record.getDisplayValue('category')) : '';
+        catalogName = context.catalogFields.catalog ? this._safeString(record.getDisplayValue('sc_catalogs')) : '';
         candidate = {
             resultKey: 'catalog:' + sysId,
             resultType: 'catalog_item',
@@ -1260,13 +1283,13 @@ superSearchEngine.prototype = {
             sysId: sysId,
             number: '',
             title: context.catalogFields.name ? this._getLocalizedRecordValue(record, 'name') : '',
-            metaText: this._buildCatalogMetadataText(record, context),
+            metaText: this._buildCatalogMetadataText(record, context, categoryName, catalogName),
             bodyText: context.catalogFields.description ? this._getLocalizedRecordValue(record, 'description') : '',
             kbName: '',
-            categoryName: context.catalogFields.category ? record.getDisplayValue('category') : '',
+            categoryName: categoryName,
             language: '',
             updatedOn: context.catalogFields.updatedOn ? this._safeString(record.getValue('sys_updated_on')) : '',
-            catalogName: context.catalogFields.catalog ? record.getDisplayValue('sc_catalogs') : '',
+            catalogName: catalogName,
             url: this._buildCatalogUrl(context.catalogItemPageId, sysId)
         };
 
@@ -1310,11 +1333,13 @@ superSearchEngine.prototype = {
         var sysId = record.getUniqueValue();
         var candidateKey = 'user:' + sysId;
         var candidate;
+        var departmentName;
 
         if (!sysId || candidateMap[candidateKey]) {
             return;
         }
 
+        departmentName = context.userFields.department ? this._safeString(record.getDisplayValue('department')) : '';
         candidate = {
             resultKey: 'user:' + sysId,
             resultType: 'sys_user',
@@ -1322,7 +1347,7 @@ superSearchEngine.prototype = {
             sysId: sysId,
             number: '',
             title: context.userFields.name ? this._safeString(record.getDisplayValue('name') || record.getValue('name')) : '',
-            metaText: this._buildUserMetadataText(record, context),
+            metaText: this._buildUserMetadataText(record, context, departmentName),
             bodyText: '',
             kbName: '',
             categoryName: '',
@@ -1330,7 +1355,7 @@ superSearchEngine.prototype = {
             updatedOn: context.userFields.updatedOn ? this._safeString(record.getValue('sys_updated_on')) : '',
             catalogName: '',
             employeeTitle: context.userFields.title ? this._safeString(record.getValue('title')) : '',
-            departmentName: context.userFields.department ? this._safeString(record.getDisplayValue('department')) : '',
+            departmentName: departmentName,
             url: this._buildUserUrl(context.userProfilePageId, sysId)
         };
 
@@ -1388,7 +1413,7 @@ superSearchEngine.prototype = {
         return parts.join(' ');
     },
 
-    _buildCatalogMetadataText: function(record, context) {
+    _buildCatalogMetadataText: function(record, context, categoryName, catalogName) {
         var parts = [];
 
         if (context.catalogFields.shortDescription) {
@@ -1400,17 +1425,17 @@ superSearchEngine.prototype = {
         }
 
         if (context.catalogFields.category) {
-            parts.push(this._safeString(record.getDisplayValue('category')));
+            parts.push(categoryName);
         }
 
         if (context.catalogFields.catalog) {
-            parts.push(this._safeString(record.getDisplayValue('sc_catalogs')));
+            parts.push(catalogName);
         }
 
         return parts.join(' ');
     },
 
-    _buildUserMetadataText: function(record, context) {
+    _buildUserMetadataText: function(record, context, departmentName) {
         var parts = [];
 
         if (context.userFields.title) {
@@ -1418,7 +1443,7 @@ superSearchEngine.prototype = {
         }
 
         if (context.userFields.department) {
-            parts.push(this._safeString(record.getDisplayValue('department')));
+            parts.push(departmentName);
         }
 
         if (context.userFields.email) {
@@ -1452,48 +1477,93 @@ superSearchEngine.prototype = {
         return scoredCandidates;
     },
 
+    _prepareCandidateSearchText: function(candidate, includeScoringData) {
+        var searchText = candidate._preparedSearchText;
+        var title;
+        var metadata;
+        var body;
+
+        if (!searchText) {
+            searchText = {
+                bodyText: this._stripHtml(candidate.bodyText),
+                metadataText: this._stripHtml(candidate.metaText)
+            };
+            candidate._preparedSearchText = searchText;
+        }
+
+        if (includeScoringData === true && searchText.scoringReady !== true) {
+            title = this._normalizeSearchText(candidate.title);
+            metadata = this._normalizeSearchText(candidate.metaText);
+            body = this._normalizeSearchText(searchText.bodyText);
+            searchText.title = title;
+            searchText.metadata = metadata;
+            searchText.body = body;
+            searchText.titleTokenMap = title ? this._buildTokenMap(this._tokenize(title)) : {};
+            searchText.metadataTokenMap = metadata ? this._buildTokenMap(this._tokenize(metadata)) : {};
+            searchText.bodyTokenMap = body ? this._buildTokenMap(this._tokenize(body)) : {};
+            searchText.scoringReady = true;
+        }
+
+        return searchText;
+    },
+
+    _releaseCandidateScoringText: function(candidate) {
+        var searchText = candidate ? candidate._preparedSearchText : null;
+
+        if (!searchText) {
+            return;
+        }
+
+        delete searchText.title;
+        delete searchText.metadata;
+        delete searchText.body;
+        delete searchText.titleTokenMap;
+        delete searchText.metadataTokenMap;
+        delete searchText.bodyTokenMap;
+        delete searchText.scoringReady;
+    },
+
     _calculateScore: function(candidate, queryProfile) {
-        var title = this._normalizeSearchText(candidate.title);
-        var metadata = this._normalizeSearchText(candidate.metaText);
-        var body = this._normalizeSearchText(this._stripHtml(candidate.bodyText));
+        var searchText = this._prepareCandidateSearchText(candidate, true);
         var primaryTerm = queryProfile.primaryTerm;
         var score = 0;
 
-        score += this._calculateTermScore(title, primaryTerm, {
+        score += this._calculateTermScore(searchText.title, primaryTerm, {
             exact: 1000,
             startsWith: 800,
             contains: 600,
             tokenWeight: 40
-        });
-        score += this._getBestSynonymScore(title, queryProfile.synonymTerms, {
+        }, searchText.titleTokenMap);
+        score += this._getBestSynonymScore(searchText.title, queryProfile.synonymTerms, {
             exact: 450,
             startsWith: 360,
             contains: 270,
             tokenWeight: 18
-        });
+        }, searchText.titleTokenMap);
 
-        score += this._calculateTermScore(metadata, primaryTerm, {
+        score += this._calculateTermScore(searchText.metadata, primaryTerm, {
             contains: 420,
             tokenWeight: 55
-        });
-        score += this._getBestSynonymScore(metadata, queryProfile.synonymTerms, {
+        }, searchText.metadataTokenMap);
+        score += this._getBestSynonymScore(searchText.metadata, queryProfile.synonymTerms, {
             contains: 180,
             tokenWeight: 22
-        });
+        }, searchText.metadataTokenMap);
 
-        score += this._calculateTermScore(body, primaryTerm, {
+        score += this._calculateTermScore(searchText.body, primaryTerm, {
             contains: 100,
             tokenWeight: 4
-        });
-        score += this._getBestSynonymScore(body, queryProfile.synonymTerms, {
+        }, searchText.bodyTokenMap);
+        score += this._getBestSynonymScore(searchText.body, queryProfile.synonymTerms, {
             contains: 45,
             tokenWeight: 2
-        });
+        }, searchText.bodyTokenMap);
 
         if (candidate.fallbackMatch === true) {
             score -= this.NEWS_FALLBACK_SCORE_PENALTY;
         }
 
+        this._releaseCandidateScoringText(candidate);
         return score;
     },
 
@@ -1525,7 +1595,7 @@ superSearchEngine.prototype = {
         return 99;
     },
 
-    _calculateTermScore: function(haystack, searchTerm, weights) {
+    _calculateTermScore: function(haystack, searchTerm, weights, tokenMap) {
         var score = 0;
 
         if (!haystack || !searchTerm || !searchTerm.normalizedValue) {
@@ -1541,13 +1611,13 @@ superSearchEngine.prototype = {
         }
 
         if (weights.tokenWeight) {
-            score += this._scoreTokenCoverage(haystack, searchTerm.tokens, weights.tokenWeight);
+            score += this._scoreTokenCoverage(haystack, searchTerm.tokens, weights.tokenWeight, tokenMap);
         }
 
         return score;
     },
 
-    _getBestSynonymScore: function(haystack, synonymTerms, weights) {
+    _getBestSynonymScore: function(haystack, synonymTerms, weights, tokenMap) {
         var highestScore = 0;
         var index;
         var currentScore;
@@ -1557,7 +1627,7 @@ superSearchEngine.prototype = {
         }
 
         for (index = 0; index < synonymTerms.length; index++) {
-            currentScore = this._calculateTermScore(haystack, synonymTerms[index], weights);
+            currentScore = this._calculateTermScore(haystack, synonymTerms[index], weights, tokenMap);
 
             if (currentScore > highestScore) {
                 highestScore = currentScore;
@@ -1567,7 +1637,7 @@ superSearchEngine.prototype = {
         return highestScore;
     },
 
-    _scoreTokenCoverage: function(haystack, tokens, tokenWeight) {
+    _scoreTokenCoverage: function(haystack, tokens, tokenWeight, tokenMap) {
         var uniqueTokens = {};
         var score = 0;
         var index;
@@ -1584,7 +1654,7 @@ superSearchEngine.prototype = {
                 continue;
             }
 
-            if (this._containsWholeToken(haystack, token)) {
+            if (tokenMap ? tokenMap[token] === true : this._containsWholeToken(haystack, token)) {
                 score += tokenWeight;
                 uniqueTokens[token] = true;
             }
@@ -1634,9 +1704,52 @@ superSearchEngine.prototype = {
                 updatedOnDisplay: this._formatUpdatedOnDisplay(candidate.updatedOn),
                 url: candidate.url
             });
+            delete candidate._preparedSearchText;
         }
 
         return results;
+    },
+
+    _cloneShapedResults: function(results, startIndex, endIndex) {
+        var clonedResults = [];
+        var finalIndex = Math.min(endIndex, results.length);
+        var index;
+        var result;
+
+        for (index = startIndex; index < finalIndex; index++) {
+            result = results[index];
+            clonedResults.push({
+                sysId: result.sysId,
+                resultType: result.resultType,
+                resultTypeLabel: result.resultTypeLabel,
+                isRequestItem: result.isRequestItem,
+                isNewsItem: result.isNewsItem,
+                isUser: result.isUser,
+                isTopic: result.isTopic,
+                isFeaturedKnowledgeBase: result.isFeaturedKnowledgeBase,
+                showUpdatedDate: result.showUpdatedDate,
+                iconKey: result.iconKey,
+                iconClass: result.iconClass,
+                iconLabel: result.iconLabel,
+                number: result.number,
+                title: result.title,
+                titleHtml: result.titleHtml,
+                snippet: result.snippet,
+                snippetHtml: result.snippetHtml,
+                kbName: result.kbName,
+                catalogName: result.catalogName,
+                employeeTitle: result.employeeTitle,
+                employeeTitleHtml: result.employeeTitleHtml,
+                departmentName: result.departmentName,
+                departmentNameHtml: result.departmentNameHtml,
+                categoryName: result.categoryName,
+                language: result.language,
+                updatedOnDisplay: result.updatedOnDisplay,
+                url: result.url
+            });
+        }
+
+        return clonedResults;
     },
 
     _formatUpdatedOnDisplay: function(updatedOn) {
@@ -1705,8 +1818,9 @@ superSearchEngine.prototype = {
     },
 
     _buildSnippet: function(candidate, highlightTerms) {
-        var bodyText = this._stripHtml(candidate.bodyText);
-        var metadataText = this._stripHtml(candidate.metaText);
+        var searchText = this._prepareCandidateSearchText(candidate, false);
+        var bodyText = searchText.bodyText;
+        var metadataText = searchText.metadataText;
         var bodyMatch = this._findFirstHighlightMatch(bodyText, highlightTerms);
         var metadataMatch = this._findFirstHighlightMatch(metadataText, highlightTerms);
 
@@ -1831,9 +1945,48 @@ superSearchEngine.prototype = {
     },
 
     _findFirstHighlightMatch: function(text, highlightTerms) {
-        var matches = this._collectHighlightMatches(text, highlightTerms);
+        var sourceText = this._safeString(text);
+        var normalizedText = sourceText.toLowerCase();
+        var firstMatch = null;
+        var highlightTerm;
+        var normalizedTerm;
+        var searchIndex;
+        var index;
 
-        return matches.length ? matches[0] : null;
+        if (!sourceText || !highlightTerms || highlightTerms.length === 0) {
+            return null;
+        }
+
+        for (index = 0; index < highlightTerms.length; index++) {
+            highlightTerm = this._safeString(highlightTerms[index]);
+            normalizedTerm = highlightTerm.toLowerCase();
+
+            if (!normalizedTerm) {
+                continue;
+            }
+
+            searchIndex = normalizedText.indexOf(normalizedTerm);
+
+            while (searchIndex > -1) {
+                if (this._isValidHighlightBoundary(sourceText, searchIndex, searchIndex + highlightTerm.length, highlightTerm)) {
+                    if (!firstMatch ||
+                        searchIndex < firstMatch.start ||
+                        (searchIndex === firstMatch.start && highlightTerm.length > firstMatch.length)) {
+                        firstMatch = {
+                            start: searchIndex,
+                            end: searchIndex + highlightTerm.length,
+                            length: highlightTerm.length
+                        };
+                    }
+
+                    break;
+                }
+
+                searchIndex = normalizedText.indexOf(normalizedTerm, searchIndex + normalizedTerm.length);
+            }
+        }
+
+        return firstMatch;
     },
 
     _collectHighlightMatches: function(text, highlightTerms) {
@@ -1965,7 +2118,6 @@ superSearchEngine.prototype = {
         connectedContent.addQuery('catalog_item', 'IN', candidateIdString);
         connectedContent.addNotNullQuery('topic');
         connectedContent.addQuery('topic.taxonomy', 'IN', taxonomyIdString);
-        connectedContent.orderByDesc('popularity');
         connectedContent.query();
 
         while (connectedContent.next()) {
