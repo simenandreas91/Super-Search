@@ -10,8 +10,13 @@ api.controller = function($window) {
 
   c.normalizeFilter = function(value) {
     var normalizedValue = String(value || 'all').toLowerCase();
+    var featuredKnowledgeBaseEnabled = !c.data.config || c.data.config.featuredKnowledgeBaseEnabled !== false;
 
     if (normalizedValue === 'knowledge') {
+      return 'knowledge_total';
+    }
+
+    if (!featuredKnowledgeBaseEnabled && (normalizedValue === 'knowledge_articles' || normalizedValue === 'featured_kb')) {
       return 'knowledge_total';
     }
 

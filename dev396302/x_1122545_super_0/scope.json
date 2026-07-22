@@ -170,7 +170,7 @@
             },
             "419e6d7bc34083106b68770d05013136": {
               "name": "Search results",
-              "updated": "2026-07-08 08:22:58",
+              "updated": "2026-07-20 09:19:35",
               "codeFields": {
                 "template": {
                   "label": "Body HTML template",
@@ -266,7 +266,7 @@
           "records": {
             "772fe9fbc34083106b68770d05013122": {
               "name": "",
-              "updated": "2026-04-15 18:23:56",
+              "updated": "2026-07-20 08:08:08",
               "codeFields": {
                 "css": {
                   "label": "CSS",

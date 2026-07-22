@@ -12,8 +12,9 @@
   var newsPageId = options.news_page_id || 'cd_news_article';
   var newsContentTypeId = options.news_content_type_id || '4880186c53202110a489ddeeff7b129a';
   var synonymDictionaryId = options.synonym_dictionary_id || '';
-  var featuredKnowledgeBaseId = options.featured_knowledge_base_id || 'bb0370019f22120047a2d126c42e7073';
-  var featuredKnowledgeBaseLabel = options.featured_knowledge_base_label || 'Styrende dokumenter';
+  var featuredKnowledgeBaseEnabled = parseBooleanOption(options.featured_knowledge_base_enabled, true);
+  var featuredKnowledgeBaseId = featuredKnowledgeBaseEnabled ? (options.featured_knowledge_base_id || 'bb0370019f22120047a2d126c42e7073') : '';
+  var featuredKnowledgeBaseLabel = featuredKnowledgeBaseEnabled ? (options.featured_knowledge_base_label || 'Styrende dokumenter') : '';
   var featuredTopicId = options.featured_topic_id || '';
   var portalRecord = $sp.getPortalRecord();
   var portalSysId = options.portal_sys_id || (portalRecord ? portalRecord.getUniqueValue() : '');
@@ -39,9 +40,9 @@
   }
 
   if (input && typeof input.resultFilter !== 'undefined') {
-    resultFilter = normalizeFilter(input.resultFilter);
+    resultFilter = normalizeFilter(input.resultFilter, featuredKnowledgeBaseEnabled);
   } else {
-    resultFilter = normalizeFilter($sp.getParameter('filter'));
+    resultFilter = normalizeFilter($sp.getParameter('filter'), featuredKnowledgeBaseEnabled);
   }
 
   data.config = {
@@ -57,6 +58,7 @@
     shortQueryResultLimit: shortQueryResultLimit,
     synonymDictionaryId: synonymDictionaryId,
     portalSysId: portalSysId,
+    featuredKnowledgeBaseEnabled: featuredKnowledgeBaseEnabled,
     featuredKnowledgeBaseId: featuredKnowledgeBaseId,
     featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,
     featuredTopicId: featuredTopicId,
@@ -178,10 +180,14 @@
     return String(value) === 'true';
   }
 
-  function normalizeFilter(value) {
+  function normalizeFilter(value, isFeaturedKnowledgeBaseEnabled) {
     var normalizedValue = String(value || 'all').toLowerCase();
 
     if (normalizedValue === 'knowledge') {
+      return 'knowledge_total';
+    }
+
+    if (!isFeaturedKnowledgeBaseEnabled && (normalizedValue === 'knowledge_articles' || normalizedValue === 'featured_kb')) {
       return 'knowledge_total';
     }
 

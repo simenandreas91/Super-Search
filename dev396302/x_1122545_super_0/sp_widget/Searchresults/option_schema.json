@@ -96,6 +96,14 @@
     "hint": "Optional ts_synonym_set dictionary sys_id. Leave empty to use all active synonym sets."
   },
   {
+    "name": "featured_knowledge_base_enabled",
+    "label": "Enable featured knowledge base",
+    "type": "boolean",
+    "default_value": "true",
+    "section": "Behavior",
+    "hint": "Split knowledge results into a featured knowledge base and other articles. Disable to show all knowledge articles only under Kunnskapsartikler."
+  },
+  {
     "name": "featured_knowledge_base_id",
     "label": "Featured knowledge base sys_id",
     "type": "string",

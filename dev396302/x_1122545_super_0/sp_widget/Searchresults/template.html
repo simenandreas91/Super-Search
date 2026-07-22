@@ -78,7 +78,7 @@
             <button
               type="button"
               class="super-search-results__filter super-search-results__filter--subfilter super-search-results__filter--knowledge-base"
-              ng-if="c.search.filters.featured_kb"
+              ng-if="c.data.config.featuredKnowledgeBaseEnabled && c.search.filters.featured_kb"
               ng-class="{'super-search-results__filter--active': c.isActiveFilter('featured_kb')}"
               ng-click="c.setFilter('featured_kb')"
               ng-disabled="c.isLoading">
@@ -88,6 +88,7 @@
             <button
               type="button"
               class="super-search-results__filter super-search-results__filter--subfilter"
+              ng-if="c.data.config.featuredKnowledgeBaseEnabled"
               ng-class="{'super-search-results__filter--active': c.isActiveFilter('knowledge_articles')}"
               ng-click="c.setFilter('knowledge_articles')"
               ng-disabled="c.isLoading">

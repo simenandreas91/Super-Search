@@ -58,5 +58,9 @@
 	"featured_topic_id": {
 		"value": "",
 		"displayValue": ""
+	},
+	"featured_knowledge_base_enabled": {
+		"value": "true",
+		"displayValue": "true"
 	}
 }
