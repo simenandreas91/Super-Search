@@ -11,7 +11,8 @@
     resultsPageId: options.results_page_id || 'search_results',
     inputPlaceholder: options.input_placeholder || 'Finn artikler, nyheter, henvedelser eller personer.',
     buttonLabel: options.button_label || 'Sok',
-    compactMode: String(options.compact_mode) === 'true'
+    compactMode: String(options.compact_mode) === 'true',
+    aiEnabled: String(options.enable_ai) === 'true' && String(gs.getProperty('x_1122545_super_0.ai_enabled', 'false')).toLowerCase() === 'true'
   };
 
   data.filterOptions = [

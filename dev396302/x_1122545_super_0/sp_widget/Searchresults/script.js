@@ -20,7 +20,14 @@
   var portalSysId = options.portal_sys_id || (portalRecord ? portalRecord.getUniqueValue() : '');
   var currentPageId = $sp.getParameter('id') || '';
   var resultFilter = 'all';
+  var aiRolloutRequested = String($sp.getParameter('ai') || '') === '1';
+  var aiGloballyEnabled = String(gs.getProperty('x_1122545_super_0.ai_enabled', 'false')).toLowerCase() === 'true';
   var searchEngine = new x_1122545_super_0.superSearchEngine();
+
+  // Carry the presentation-only URL signal across separate widget Ajax requests.
+  if (input && typeof input.aiRolloutRequested !== 'undefined') {
+    aiRolloutRequested = input.aiRolloutRequested === true || String(input.aiRolloutRequested).toLowerCase() === 'true';
+  }
 
   if (input && input.action === 'trackClick') {
     data.clickTracked = publishSearchClick(input.clickPayload);
@@ -64,8 +71,37 @@
     featuredTopicId: featuredTopicId,
     currentPageId: currentPageId,
     resultFilter: resultFilter,
+    aiRolloutRequested: aiRolloutRequested,
+    aiEnabled: aiRolloutRequested && aiGloballyEnabled,
     deferInitialQuery: !input
   };
+
+  if (input && input.action === 'generateAiAnswer') {
+    if (!data.config.aiEnabled || !isAiEligibleFilter(resultFilter)) {
+      data.aiAnswer = {
+        status: 'disabled',
+        answer: '',
+        citations: []
+      };
+      return;
+    }
+
+    data.aiAnswer = new x_1122545_super_0.superSearchAiService().generate({
+      query: query,
+      candidateLimit: candidateLimit,
+      includeBodySearch: includeBodySearch,
+      articlePageId: articlePageId,
+      catalogItemPageId: catalogItemPageId,
+      newsPageId: newsPageId,
+      newsContentTypeId: newsContentTypeId,
+      synonymDictionaryId: synonymDictionaryId,
+      portalSysId: portalSysId,
+      featuredKnowledgeBaseId: featuredKnowledgeBaseId,
+      featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,
+      featuredTopicId: featuredTopicId
+    });
+    return;
+  }
 
   if (input && typeof input.query !== 'undefined') {
     data.search = searchEngine.searchKnowledge({
@@ -196,6 +232,10 @@
     }
 
     return 'all';
+  }
+
+  function isAiEligibleFilter(filterId) {
+    return filterId === 'all' || filterId === 'knowledge_total' || filterId === 'knowledge_articles' || filterId === 'featured_kb';
   }
 
   function publishSearchAnalytics(searchQuery, searchResult, portalId, pageId, defaultPageSize) {

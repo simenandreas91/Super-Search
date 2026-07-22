@@ -81,6 +81,180 @@
   padding: 12px 0;
 }
 
+.super-search-results__answer {
+  background: #ffffff;
+  border: 1px solid #bfd1dc;
+  border-left: 4px solid var(--super-search-results-accent);
+  border-radius: 6px;
+  color: var(--super-search-results-text);
+  margin: 18px 0 22px;
+  padding: 18px 20px;
+}
+
+.super-search-results__answer--muted {
+  background: #ffffff;
+  border-color: var(--super-search-results-border-soft);
+}
+
+.super-search-results__answer--loading {
+  animation: super-search-results-answer-pulse 1.8s ease-in-out infinite;
+  border-left-color: var(--super-search-results-accent);
+  overflow: hidden;
+  position: relative;
+}
+
+.super-search-results__answer--loading::after {
+  animation: super-search-results-answer-shimmer 1.8s ease-in-out infinite;
+  background: linear-gradient(
+    105deg,
+    rgba(255, 255, 255, 0) 20%,
+    rgba(0, 114, 206, 0.04) 42%,
+    rgba(0, 114, 206, 0.1) 50%,
+    rgba(0, 114, 206, 0.04) 58%,
+    rgba(255, 255, 255, 0) 80%
+  );
+  bottom: 0;
+  content: "";
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: 0;
+  transform: translateX(-100%);
+}
+
+.super-search-results__answer--loading .super-search-results__answer-icon {
+  animation: super-search-results-answer-icon-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes super-search-results-answer-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 114, 206, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 0 4px rgba(0, 114, 206, 0.08);
+  }
+}
+
+@keyframes super-search-results-answer-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  65%,
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes super-search-results-answer-icon-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .super-search-results__answer--loading,
+  .super-search-results__answer--loading .super-search-results__answer-icon {
+    animation: none;
+  }
+
+  .super-search-results__answer--loading::after {
+    animation: none;
+    display: none;
+  }
+}
+
+.super-search-results__answer-heading-row {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+}
+
+.super-search-results__answer-icon {
+  align-items: center;
+  color: var(--super-search-results-accent);
+  display: inline-flex;
+  flex: 0 0 24px;
+  font-size: 20px;
+  justify-content: center;
+  padding-top: 1px;
+}
+
+.super-search-results__answer-title {
+  color: var(--super-search-results-text);
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 2px;
+}
+
+.super-search-results__answer-eyebrow {
+  color: var(--super-search-results-muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.super-search-results__answer-text,
+.super-search-results__answer-status {
+  color: #26323a;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 14px 0 0;
+  white-space: pre-line;
+}
+
+.super-search-results__answer-citations {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.super-search-results__answer-citations-label {
+  color: var(--super-search-results-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-right: 2px;
+  text-transform: uppercase;
+}
+
+.super-search-results__answer-citation {
+  background: #ffffff;
+  border: 1px solid #bfd1dc;
+  border-radius: 4px;
+  color: var(--super-search-results-accent);
+  display: inline-flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 4px;
+  padding: 6px 9px;
+  text-decoration: none;
+}
+
+.super-search-results__answer-citation:hover,
+.super-search-results__answer-citation:focus {
+  border-color: var(--super-search-results-accent);
+  color: var(--super-search-results-accent);
+  outline: none;
+  text-decoration: underline;
+}
+
+.super-search-results__answer-citation:focus {
+  box-shadow: 0 0 0 3px rgba(8, 60, 94, 0.12);
+}
+
 .super-search-results__range-row {
   border-top: 1px solid var(--super-search-results-border-soft);
   margin-bottom: 18px;

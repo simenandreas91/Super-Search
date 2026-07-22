@@ -19,6 +19,10 @@ api.controller = function($window, $scope, $location) {
       targetUrl += '&filter=' + encodeURIComponent(selectedFilter);
     }
 
+    if (c.data.config.aiEnabled) {
+      targetUrl += '&ai=1';
+    }
+
     $window.location.href = targetUrl;
   };
 

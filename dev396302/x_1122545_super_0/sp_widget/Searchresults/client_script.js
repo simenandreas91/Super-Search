@@ -4,8 +4,106 @@ api.controller = function($window) {
   c.isLoading = false;
   c.isTrackingClick = false;
   c.inlineSearchTerm = '';
+  c.aiAnswer = {
+    status: 'idle',
+    answer: '',
+    citations: []
+  };
+  var aiRequestSequence = 0;
+  var aiAnswersByQuery = {};
+
   c.normalizeQuery = function(value) {
     return (value || '').replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
+  };
+
+  c.getAiQueryKey = function(value) {
+    return c.normalizeQuery(value).toLowerCase();
+  };
+
+  c.isAiEligibleFilter = function(filterId) {
+    return filterId === 'all' || filterId === 'knowledge_total' || filterId === 'knowledge_articles' || filterId === 'featured_kb';
+  };
+
+  c.shouldShowAi = function() {
+    var query = c.search ? c.normalizeQuery(c.search.query) : '';
+    var filterId = c.search ? c.normalizeFilter(c.search.activeFilter) : 'all';
+
+    return c.data.config && c.data.config.aiEnabled === true && query.length >= 3 && c.isAiEligibleFilter(filterId);
+  };
+
+  c.maybeGenerateAiAnswer = function() {
+    var query;
+    var queryKey;
+    var sequence;
+    var loadingState;
+
+    if (!c.shouldShowAi()) {
+      return;
+    }
+
+    query = c.normalizeQuery(c.search.query);
+    queryKey = c.getAiQueryKey(query);
+
+    if (aiAnswersByQuery[queryKey]) {
+      c.aiAnswer = aiAnswersByQuery[queryKey];
+      return;
+    }
+
+    sequence = ++aiRequestSequence;
+    loadingState = {
+      status: 'loading',
+      answer: '',
+      citations: [],
+      queryKey: queryKey
+    };
+    aiAnswersByQuery[queryKey] = loadingState;
+    c.aiAnswer = loadingState;
+
+    c.server.get({
+      action: 'generateAiAnswer',
+      query: query,
+      resultFilter: c.search.activeFilter,
+      aiRolloutRequested: c.data.config.aiRolloutRequested === true
+    }).then(function(response) {
+      var serverAnswer = response && response.data ? response.data.aiAnswer : null;
+      var nextState = c.normalizeAiAnswer(serverAnswer, queryKey);
+
+      aiAnswersByQuery[queryKey] = nextState;
+
+      if (sequence !== aiRequestSequence || c.getAiQueryKey(c.search && c.search.query) !== queryKey) {
+        return;
+      }
+
+      c.aiAnswer = nextState;
+    }, function() {
+      var nextState = c.normalizeAiAnswer(null, queryKey);
+
+      aiAnswersByQuery[queryKey] = nextState;
+
+      if (sequence !== aiRequestSequence || c.getAiQueryKey(c.search && c.search.query) !== queryKey) {
+        return;
+      }
+
+      c.aiAnswer = nextState;
+    });
+  };
+
+  c.normalizeAiAnswer = function(serverAnswer, queryKey) {
+    var allowedStatuses = {
+      ready: true,
+      no_evidence: true,
+      disabled: true,
+      rate_limited: true,
+      error: true
+    };
+    var status = serverAnswer && allowedStatuses[serverAnswer.status] ? serverAnswer.status : 'error';
+
+    return {
+      status: status,
+      answer: status === 'ready' ? String(serverAnswer.answer || '') : '',
+      citations: status === 'ready' && angular.isArray(serverAnswer.citations) ? serverAnswer.citations : [],
+      queryKey: queryKey
+    };
   };
 
   c.normalizeFilter = function(value) {
@@ -141,6 +239,13 @@ api.controller = function($window) {
       return;
     }
 
+    aiRequestSequence += 1;
+    c.aiAnswer = {
+      status: 'idle',
+      answer: '',
+      citations: [],
+      queryKey: c.getAiQueryKey(nextQuery)
+    };
     c.isLoading = true;
     c.server.get({
       query: nextQuery,
@@ -152,6 +257,7 @@ api.controller = function($window) {
       c.data.config.deferInitialQuery = false;
       c.updateUrl();
       c.isLoading = false;
+      c.maybeGenerateAiAnswer();
     }, function() {
       c.isLoading = false;
     });
@@ -189,6 +295,7 @@ api.controller = function($window) {
       page: 1,
       resultFilter: filterId
     });
+    c.maybeGenerateAiAnswer();
   };
 
   c.isActiveFilter = function(filterId) {
@@ -403,5 +510,7 @@ api.controller = function($window) {
       page: c.search.page,
       resultFilter: c.search.activeFilter
     });
+  } else {
+    c.maybeGenerateAiAnswer();
   }
 };

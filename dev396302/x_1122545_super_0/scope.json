@@ -110,9 +110,19 @@
         "sys_script_include": {
           "type": "records",
           "records": {
+            "f630b5a4c3d2031065eefdec050131bc": {
+              "name": "superSearchAiService",
+              "updated": "2026-07-22 07:10:18",
+              "codeFields": {
+                "script": {
+                  "label": "Script",
+                  "type": "script_plain"
+                }
+              }
+            },
             "f6ae29bbc34083106b68770d05013182": {
               "name": "superSearchEngine",
-              "updated": "2026-07-13 09:52:15",
+              "updated": "2026-07-22 07:47:31",
               "codeFields": {
                 "script": {
                   "label": "Script",
@@ -132,7 +142,7 @@
           "records": {
             "3b9d29f7c34083106b68770d0501314c": {
               "name": "Super search widget",
-              "updated": "2026-07-08 08:41:56",
+              "updated": "2026-07-22 07:06:37",
               "codeFields": {
                 "template": {
                   "label": "Body HTML template",
@@ -170,7 +180,7 @@
             },
             "419e6d7bc34083106b68770d05013136": {
               "name": "Search results",
-              "updated": "2026-07-20 09:19:35",
+              "updated": "2026-07-22 10:41:27",
               "codeFields": {
                 "template": {
                   "label": "Body HTML template",

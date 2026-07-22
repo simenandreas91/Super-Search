@@ -53,6 +53,54 @@
     Laster resultater...
   </div>
 
+  <div
+    class="super-search-results__answer"
+    ng-class="{
+      'super-search-results__answer--muted': c.aiAnswer.status !== 'ready',
+      'super-search-results__answer--loading': c.aiAnswer.status === 'loading'
+    }"
+    ng-if="c.shouldShowAi() && c.aiAnswer.status !== 'idle'"
+    role="region"
+    aria-label="Oppsummert svar fra kunnskapsartikler"
+    aria-live="polite"
+    ng-attr-aria-busy="{{c.aiAnswer.status === 'loading'}}">
+    <div class="super-search-results__answer-heading-row">
+      <span class="super-search-results__answer-icon" aria-hidden="true">
+        <i class="fa fa-lightbulb-o"></i>
+      </span>
+      <div>
+        <h3 class="super-search-results__answer-title">Oppsummert svar</h3>
+        <p class="super-search-results__answer-eyebrow">Basert på kunnskapsartikler du har tilgang til</p>
+      </div>
+    </div>
+
+    <p class="super-search-results__answer-status" ng-if="c.aiAnswer.status === 'loading'">
+      Lager et svar fra relevante kunnskapsartikler ...
+    </p>
+
+    <p class="super-search-results__answer-text" ng-if="c.aiAnswer.status === 'ready'" ng-bind="c.aiAnswer.answer"></p>
+
+    <div class="super-search-results__answer-citations" ng-if="c.aiAnswer.status === 'ready' && c.aiAnswer.citations.length">
+      <span class="super-search-results__answer-citations-label">Kilder</span>
+      <a
+        class="super-search-results__answer-citation"
+        ng-repeat="citation in c.aiAnswer.citations track by citation.id"
+        ng-href="{{citation.url}}">
+        <span ng-bind="citation.id"></span>
+        <span ng-if="citation.number" ng-bind="citation.number"></span>
+        <span ng-bind="citation.title"></span>
+      </a>
+    </div>
+
+    <p class="super-search-results__answer-status" ng-if="c.aiAnswer.status === 'no_evidence'">
+      Vi fant ikke nok informasjon i de tilgjengelige kunnskapsartiklene til å lage et sikkert svar.
+    </p>
+
+    <p class="super-search-results__answer-status" ng-if="c.aiAnswer.status === 'disabled' || c.aiAnswer.status === 'rate_limited' || c.aiAnswer.status === 'error'">
+      Oppsummert svar er midlertidig utilgjengelig. Du kan fortsatt bruke søkeresultatene nedenfor.
+    </p>
+  </div>
+
   <div ng-if="c.search.query && c.search.filters.all.count">
     <div class="super-search-results__content-layout">
       <aside class="super-search-results__sidebar">

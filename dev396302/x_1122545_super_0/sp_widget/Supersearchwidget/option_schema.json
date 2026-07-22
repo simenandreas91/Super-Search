@@ -30,5 +30,13 @@
     "default_value": "false",
     "section": "Behavior",
     "hint": "Render a compact search input without the greeting, intended for header/navigation use."
+  },
+  {
+    "name": "enable_ai",
+    "label": "Enable grounded answers",
+    "type": "boolean",
+    "default_value": "false",
+    "section": "Behavior",
+    "hint": "Request a grounded knowledge answer when the global instance switch is also enabled."
   }
 ]

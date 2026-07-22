@@ -29,6 +29,8 @@ superSearchEngine.prototype = {
         this.KNOWLEDGE_FALLBACK_MIN_TOKEN_LENGTH = 2;
         this.KNOWLEDGE_FALLBACK_REQUIRED_RATIO = 0.75;
         this.KNOWLEDGE_FALLBACK_MAX_CANDIDATES = 30;
+        this.KNOWLEDGE_TOKEN_RETRIEVAL_MIN_LENGTH = 3;
+        this.KNOWLEDGE_TOKEN_RETRIEVAL_MAX_TERMS = 6;
         this.NEWS_FALLBACK_MIN_QUERY_TOKENS = 3;
         this.NEWS_FALLBACK_MIN_TOKEN_LENGTH = 3;
         this.NEWS_FALLBACK_REQUIRED_RATIO = 0.7;
@@ -110,6 +112,9 @@ superSearchEngine.prototype = {
         };
         this._mergeStopWords(this.NEWS_FALLBACK_STOP_WORDS, this.SEARCH_STOP_WORDS);
         this.SNIPPET_LENGTH = 180;
+        this.AI_SOURCE_LIMIT = 5;
+        this.AI_ARTICLE_CHARACTER_LIMIT = 3000;
+        this.AI_TOTAL_CHARACTER_LIMIT = 15000;
     },
 
     searchKnowledge: function(options) {
@@ -188,6 +193,165 @@ superSearchEngine.prototype = {
         response.results = this._cloneShapedResults(scoredCandidates, startIndex, startIndex + response.pageSize);
 
         return response;
+    },
+
+    getAiKnowledgeContext: function(options) {
+        var request = options || {};
+        var query = this._cleanQuery(request.query);
+        var normalizedQuery = this._normalizeQuery(query);
+        var articlePageId = this._safeString(request.articlePageId) || this.DEFAULT_ARTICLE_PAGE_ID;
+        var catalogItemPageId = this._safeString(request.catalogItemPageId) || this.DEFAULT_CATALOG_ITEM_PAGE_ID;
+        var newsPageId = this._safeString(request.newsPageId) || this.DEFAULT_NEWS_PAGE_ID;
+        var newsContentTypeId = this._safeString(request.newsContentTypeId) || this.DEFAULT_NEWS_CONTENT_TYPE_ID;
+        var portalSysId = this._safeString(request.portalSysId);
+        var featuredKnowledgeBaseId = this._safeString(request.featuredKnowledgeBaseId);
+        var featuredKnowledgeBaseLabel = this._cleanQuery(request.featuredKnowledgeBaseLabel);
+        var featuredTopicId = this._safeString(request.featuredTopicId);
+        var synonymDictionaryId = this._safeString(request.synonymDictionaryId);
+        var candidateLimit = this._clampInteger(request.candidateLimit, this.DEFAULT_CANDIDATE_LIMIT, 5, this.MAX_CANDIDATE_LIMIT);
+        var response = {
+            query: query,
+            normalizedQuery: normalizedQuery,
+            sources: []
+        };
+        var rankedResults;
+        var rankedKnowledge = [];
+        var rankedIds = [];
+        var context;
+        var queryProfile;
+        var articleRecord;
+        var articleMap = {};
+        var totalCharacters = 0;
+        var article;
+        var excerpt;
+        var excerptLimit;
+        var index;
+
+        if (!normalizedQuery || normalizedQuery.length < 3) {
+            return response;
+        }
+
+        rankedResults = this.searchKnowledge({
+            query: query,
+            page: 1,
+            pageSize: this.AI_SOURCE_LIMIT,
+            candidateLimit: candidateLimit,
+            includeBodySearch: this._toBoolean(request.includeBodySearch),
+            articlePageId: articlePageId,
+            catalogItemPageId: catalogItemPageId,
+            newsPageId: newsPageId,
+            newsContentTypeId: newsContentTypeId,
+            synonymDictionaryId: synonymDictionaryId,
+            portalSysId: portalSysId,
+            featuredKnowledgeBaseId: featuredKnowledgeBaseId,
+            featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,
+            featuredTopicId: featuredTopicId,
+            resultFilter: 'knowledge_total',
+            knowledgeOnly: true
+        });
+
+        for (index = 0; index < rankedResults.allResults.length && rankedKnowledge.length < this.AI_SOURCE_LIMIT; index++) {
+            if (rankedResults.allResults[index].resultType !== 'knowledge' || !rankedResults.allResults[index].sysId) {
+                continue;
+            }
+
+            rankedKnowledge.push(rankedResults.allResults[index]);
+            rankedIds.push(rankedResults.allResults[index].sysId);
+        }
+
+        if (rankedIds.length === 0) {
+            return response;
+        }
+
+        context = this._buildContext(articlePageId, catalogItemPageId, newsPageId, newsContentTypeId, portalSysId, featuredKnowledgeBaseId, featuredKnowledgeBaseLabel, featuredTopicId);
+        queryProfile = this._buildQueryProfile(query, normalizedQuery, synonymDictionaryId);
+        articleRecord = new GlideRecordSecure(this.KNOWLEDGE_TABLE);
+        articleRecord.addQuery('sys_id', 'IN', rankedIds.join(','));
+        this._applyKnowledgeBaseFilters(articleRecord, context);
+        articleRecord.query();
+
+        while (articleRecord.next()) {
+            if (!this._canReadKnowledgeRecordAndText(articleRecord, context)) {
+                continue;
+            }
+
+            articleMap[articleRecord.getUniqueValue()] = {
+                sysId: articleRecord.getUniqueValue(),
+                number: context.knowledgeFields.number ? this._safeString(articleRecord.getValue('number')) : '',
+                title: context.knowledgeFields.shortDescription ? this._safeString(articleRecord.getValue('short_description')) : '',
+                body: context.knowledgeFields.text ? this._safeString(articleRecord.getValue('text')) : ''
+            };
+        }
+
+        for (index = 0; index < rankedKnowledge.length && response.sources.length < this.AI_SOURCE_LIMIT; index++) {
+            article = articleMap[rankedKnowledge[index].sysId];
+
+            if (!article || !article.body || totalCharacters >= this.AI_TOTAL_CHARACTER_LIMIT) {
+                continue;
+            }
+
+            excerptLimit = Math.min(this.AI_ARTICLE_CHARACTER_LIMIT, this.AI_TOTAL_CHARACTER_LIMIT - totalCharacters);
+            excerpt = this._buildAiExcerpt(article.body, queryProfile, excerptLimit);
+
+            if (!excerpt) {
+                continue;
+            }
+
+            totalCharacters += excerpt.length;
+            response.sources.push({
+                id: 'S' + (response.sources.length + 1),
+                title: article.title || rankedKnowledge[index].title || article.number,
+                number: article.number || rankedKnowledge[index].number || '',
+                sysId: article.sysId,
+                url: this._buildKnowledgeUrl(articlePageId, article.sysId),
+                excerpt: excerpt
+            });
+        }
+
+        return response;
+    },
+
+    _canReadKnowledgeRecordAndText: function(record, context) {
+        var textElement;
+
+        if (!record || !record.isValidRecord() || !context.knowledgeFields.text) {
+            return false;
+        }
+
+        if (typeof record.canRead === 'function' && !record.canRead()) {
+            return false;
+        }
+
+        textElement = record.getElement('text');
+
+        if (!textElement) {
+            return false;
+        }
+
+        if (typeof textElement.canRead === 'function' && !textElement.canRead()) {
+            return false;
+        }
+
+        return true;
+    },
+
+    _buildAiExcerpt: function(value, queryProfile, limit) {
+        var plainText = this._stripHtml(value);
+        var highlightTerms = this._buildHighlightTerms(queryProfile);
+        var match = this._findFirstHighlightMatch(plainText, highlightTerms);
+        var excerpt;
+
+        if (!plainText || limit < 1) {
+            return '';
+        }
+
+        if (match) {
+            excerpt = this._extractSnippet(plainText, match.start, match.end, limit);
+        } else {
+            excerpt = this._truncateText(plainText, limit);
+        }
+
+        return excerpt.length > limit ? excerpt.substring(0, limit) : excerpt;
     },
 
     _buildContext: function(articlePageId, catalogItemPageId, newsPageId, newsContentTypeId, portalSysId, featuredKnowledgeBaseId, featuredKnowledgeBaseLabel, featuredTopicId) {
@@ -674,6 +838,7 @@ superSearchEngine.prototype = {
         var passes = [];
         var seenPasses = {};
         var metadataFields = [];
+        var tokenSearchTerms = this._getPrioritizedKnowledgeTokenTerms(queryProfile);
 
         if (context.knowledgeFields.number) {
             this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'number', ['=', 'STARTSWITH', 'CONTAINS']);
@@ -681,6 +846,7 @@ superSearchEngine.prototype = {
 
         if (context.knowledgeFields.shortDescription) {
             this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'short_description', ['=', 'STARTSWITH', 'CONTAINS']);
+            this._appendFieldPassDefinitions(passes, seenPasses, tokenSearchTerms, 'short_description', ['STARTSWITH', 'CONTAINS']);
         }
 
         if (context.knowledgeFields.meta) {
@@ -693,11 +859,12 @@ superSearchEngine.prototype = {
 
         if (metadataFields.length > 0) {
             this._appendMultiFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, metadataFields, 'CONTAINS');
-            this._appendMultiFieldPassDefinitions(passes, seenPasses, (queryProfile.tokenSearchTerms || this._getTokenSearchTerms(queryProfile.searchTerms)), metadataFields, 'CONTAINS');
+            this._appendMultiFieldPassDefinitions(passes, seenPasses, tokenSearchTerms, metadataFields, 'CONTAINS');
         }
 
         if (includeBodySearch && context.knowledgeFields.text) {
             this._appendFieldPassDefinitions(passes, seenPasses, queryProfile.searchTerms, 'text', ['CONTAINS']);
+            this._appendFieldPassDefinitions(passes, seenPasses, tokenSearchTerms, 'text', ['CONTAINS']);
         }
 
         return passes;
@@ -848,6 +1015,49 @@ superSearchEngine.prototype = {
         }
 
         return tokenTerms;
+    },
+
+    _getPrioritizedKnowledgeTokenTerms: function(queryProfile) {
+        var tokenTerms = queryProfile && queryProfile.tokenSearchTerms ?
+            queryProfile.tokenSearchTerms : this._getTokenSearchTerms(queryProfile ? queryProfile.searchTerms : []);
+        var prioritizedTerms = [];
+        var result = [];
+        var index;
+        var term;
+        var normalizedValue;
+
+        for (index = 0; index < tokenTerms.length; index++) {
+            term = tokenTerms[index];
+            normalizedValue = term && term.normalizedValue ? term.normalizedValue : this._normalizeQuery(term ? term.value : '');
+
+            if (!normalizedValue || normalizedValue.length < this.KNOWLEDGE_TOKEN_RETRIEVAL_MIN_LENGTH) {
+                continue;
+            }
+
+            prioritizedTerms.push({
+                term: term,
+                index: index,
+                length: normalizedValue.length
+            });
+        }
+
+        prioritizedTerms.sort(function(left, right) {
+            if (left.term.isPrimary !== right.term.isPrimary) {
+                return left.term.isPrimary ? -1 : 1;
+            }
+
+            if (left.length !== right.length) {
+                return right.length - left.length;
+            }
+
+            return left.index - right.index;
+        });
+
+        for (index = 0; index < prioritizedTerms.length && result.length < this.KNOWLEDGE_TOKEN_RETRIEVAL_MAX_TERMS; index++) {
+            result.push(prioritizedTerms[index].term);
+        }
+
+        return result;
     },
 
     _appendPassDefinition: function(passes, seenPasses, passDefinition) {
@@ -2563,7 +2773,9 @@ superSearchEngine.prototype = {
 
     _stripHtml: function(value) {
         return this._safeString(value)
-            .replace(/&lt;script&gt;/gi, ' ')
+            .replace(new RegExp('&lt;' + 'script[\\s\\S]*?&lt;\\/' + 'script&gt;', 'gi'), ' ')
+            .replace(/&lt;style[\s\S]*?&lt;\/style&gt;/gi, ' ')
+            .replace(new RegExp('<' + 'script[\\s\\S]*?<\\/' + 'script>', 'gi'), ' ')
             .replace(/<style[\s\S]*?<\/style>/gi, ' ')
             .replace(/<[^>]+>/g, ' ')
             .replace(/&nbsp;/gi, ' ')
