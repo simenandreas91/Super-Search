@@ -88,6 +88,13 @@ superSearchEngine.prototype = {
             'vært': true,
             'what': true
         };
+        this.QUERY_TERM_EXPANSIONS = {
+            'ansatt': ['nyansatt'],
+            'begynner': ['nyansatt'],
+            'begynte': ['nyansatt'],
+            'starter': ['nyansatt'],
+            'startet': ['nyansatt']
+        };
         this.NEWS_FALLBACK_STOP_WORDS = {
             'a': true,
             'an': true,
@@ -217,6 +224,7 @@ superSearchEngine.prototype = {
         var rankedResults;
         var rankedKnowledge = [];
         var rankedIds = [];
+        var rankedTitleMap = {};
         var context;
         var queryProfile;
         var articleRecord;
@@ -225,6 +233,7 @@ superSearchEngine.prototype = {
         var article;
         var excerpt;
         var excerptLimit;
+        var titleKey;
         var index;
 
         if (!normalizedQuery || normalizedQuery.length < 3) {
@@ -253,6 +262,16 @@ superSearchEngine.prototype = {
         for (index = 0; index < rankedResults.allResults.length && rankedKnowledge.length < this.AI_SOURCE_LIMIT; index++) {
             if (rankedResults.allResults[index].resultType !== 'knowledge' || !rankedResults.allResults[index].sysId) {
                 continue;
+            }
+
+            titleKey = this._normalizeSearchText(rankedResults.allResults[index].title);
+
+            if (titleKey && rankedTitleMap[titleKey]) {
+                continue;
+            }
+
+            if (titleKey) {
+                rankedTitleMap[titleKey] = true;
             }
 
             rankedKnowledge.push(rankedResults.allResults[index]);
@@ -338,20 +357,75 @@ superSearchEngine.prototype = {
     _buildAiExcerpt: function(value, queryProfile, limit) {
         var plainText = this._stripHtml(value);
         var highlightTerms = this._buildHighlightTerms(queryProfile);
-        var match = this._findFirstHighlightMatch(plainText, highlightTerms);
+        var matches = this._findAiExcerptMatches(plainText, highlightTerms, limit);
+        var segmentLength;
         var excerpt;
 
         if (!plainText || limit < 1) {
             return '';
         }
 
-        if (match) {
-            excerpt = this._extractSnippet(plainText, match.start, match.end, limit);
+        if (matches.length > 1) {
+            segmentLength = Math.max(1, Math.floor((limit - 7) / 2));
+            excerpt = this._extractSnippet(plainText, matches[0].start, matches[0].end, segmentLength) +
+                '\n...\n' +
+                this._extractSnippet(plainText, matches[1].start, matches[1].end, segmentLength);
+        } else if (matches.length === 1) {
+            excerpt = this._extractSnippet(plainText, matches[0].start, matches[0].end, limit);
         } else {
             excerpt = this._truncateText(plainText, limit);
         }
 
         return excerpt.length > limit ? excerpt.substring(0, limit) : excerpt;
+    },
+
+    _findAiExcerptMatches: function(text, highlightTerms, limit) {
+        var candidates = [];
+        var selected = [];
+        var minimumDistance = Math.max(200, Math.floor(limit / 3));
+        var match;
+        var index;
+
+        for (index = 0; index < highlightTerms.length; index++) {
+            match = this._findFirstHighlightMatch(text, [highlightTerms[index]]);
+
+            if (!match) {
+                continue;
+            }
+
+            candidates.push({
+                start: match.start,
+                end: match.end,
+                termLength: this._safeString(highlightTerms[index]).length
+            });
+        }
+
+        if (candidates.length === 0) {
+            return selected;
+        }
+
+        candidates.sort(function(left, right) {
+            if (left.termLength !== right.termLength) {
+                return right.termLength - left.termLength;
+            }
+
+            return left.start - right.start;
+        });
+
+        selected.push(candidates[0]);
+
+        for (index = 1; index < candidates.length; index++) {
+            if (Math.abs(candidates[index].start - selected[0].start) >= minimumDistance) {
+                selected.push(candidates[index]);
+                break;
+            }
+        }
+
+        selected.sort(function(left, right) {
+            return left.start - right.start;
+        });
+
+        return selected;
     },
 
     _buildContext: function(articlePageId, catalogItemPageId, newsPageId, newsContentTypeId, portalSysId, featuredKnowledgeBaseId, featuredKnowledgeBaseLabel, featuredTopicId) {
@@ -493,13 +567,45 @@ superSearchEngine.prototype = {
     _getExpandedSearchTerms: function(query, normalizedQuery, synonymDictionaryId) {
         var terms = [];
         var uniqueTerms = {};
+        var configuredTerms = this._getConfiguredExpansionTerms(normalizedQuery);
         var synonymTerms = this._getMatchedSynonymTerms(normalizedQuery, synonymDictionaryId);
         var index;
 
         this._appendSearchTerm(terms, uniqueTerms, query, true);
 
+        for (index = 0; index < configuredTerms.length && terms.length < this.MAX_SEARCH_TERMS; index++) {
+            this._appendSearchTerm(terms, uniqueTerms, configuredTerms[index], false);
+        }
+
         for (index = 0; index < synonymTerms.length && terms.length < this.MAX_SEARCH_TERMS; index++) {
             this._appendSearchTerm(terms, uniqueTerms, synonymTerms[index], false);
+        }
+
+        return terms;
+    },
+
+    _getConfiguredExpansionTerms: function(normalizedQuery) {
+        var tokens = this._tokenize(normalizedQuery);
+        var terms = [];
+        var uniqueTerms = {};
+        var expansions;
+        var tokenIndex;
+        var expansionIndex;
+        var expansion;
+
+        for (tokenIndex = 0; tokenIndex < tokens.length; tokenIndex++) {
+            expansions = this.QUERY_TERM_EXPANSIONS[tokens[tokenIndex]] || [];
+
+            for (expansionIndex = 0; expansionIndex < expansions.length; expansionIndex++) {
+                expansion = expansions[expansionIndex];
+
+                if (!expansion || uniqueTerms[expansion]) {
+                    continue;
+                }
+
+                uniqueTerms[expansion] = true;
+                terms.push(expansion);
+            }
         }
 
         return terms;

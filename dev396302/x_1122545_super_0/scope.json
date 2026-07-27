@@ -112,7 +112,7 @@
           "records": {
             "f630b5a4c3d2031065eefdec050131bc": {
               "name": "superSearchAiService",
-              "updated": "2026-07-22 07:10:18",
+              "updated": "2026-07-26 08:04:18",
               "codeFields": {
                 "script": {
                   "label": "Script",
@@ -122,7 +122,7 @@
             },
             "f6ae29bbc34083106b68770d05013182": {
               "name": "superSearchEngine",
-              "updated": "2026-07-22 07:47:31",
+              "updated": "2026-07-26 08:00:23",
               "codeFields": {
                 "script": {
                   "label": "Script",
@@ -180,7 +180,7 @@
             },
             "419e6d7bc34083106b68770d05013136": {
               "name": "Search results",
-              "updated": "2026-07-22 10:41:27",
+              "updated": "2026-07-26 07:46:07",
               "codeFields": {
                 "template": {
                   "label": "Body HTML template",

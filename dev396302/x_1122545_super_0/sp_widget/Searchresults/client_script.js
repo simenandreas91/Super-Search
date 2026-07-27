@@ -62,8 +62,7 @@ api.controller = function($window) {
     c.server.get({
       action: 'generateAiAnswer',
       query: query,
-      resultFilter: c.search.activeFilter,
-      aiRolloutRequested: c.data.config.aiRolloutRequested === true
+      resultFilter: c.search.activeFilter
     }).then(function(response) {
       var serverAnswer = response && response.data ? response.data.aiAnswer : null;
       var nextState = c.normalizeAiAnswer(serverAnswer, queryKey);
