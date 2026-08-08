@@ -120,6 +120,7 @@ superSearchEngine.prototype = {
         this._mergeStopWords(this.NEWS_FALLBACK_STOP_WORDS, this.SEARCH_STOP_WORDS);
         this.SNIPPET_LENGTH = 180;
         this.AI_SOURCE_LIMIT = 5;
+        this.AI_INTENT_QUERY_LIMIT = 5;
         this.AI_ARTICLE_CHARACTER_LIMIT = 3000;
         this.AI_TOTAL_CHARACTER_LIMIT = 15000;
     },
@@ -221,9 +222,11 @@ superSearchEngine.prototype = {
             normalizedQuery: normalizedQuery,
             sources: []
         };
-        var rankedResults;
+        var retrievalQueries;
+        var rankedResultSets = [];
         var rankedKnowledge = [];
         var rankedIds = [];
+        var rankedIdMap = {};
         var rankedTitleMap = {};
         var context;
         var queryProfile;
@@ -233,49 +236,48 @@ superSearchEngine.prototype = {
         var article;
         var excerpt;
         var excerptLimit;
-        var titleKey;
+        var queryIndex;
         var index;
 
         if (!normalizedQuery || normalizedQuery.length < 3) {
             return response;
         }
 
-        rankedResults = this.searchKnowledge({
-            query: query,
-            page: 1,
-            pageSize: this.AI_SOURCE_LIMIT,
-            candidateLimit: candidateLimit,
-            includeBodySearch: this._toBoolean(request.includeBodySearch),
-            articlePageId: articlePageId,
-            catalogItemPageId: catalogItemPageId,
-            newsPageId: newsPageId,
-            newsContentTypeId: newsContentTypeId,
-            synonymDictionaryId: synonymDictionaryId,
-            portalSysId: portalSysId,
-            featuredKnowledgeBaseId: featuredKnowledgeBaseId,
-            featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,
-            featuredTopicId: featuredTopicId,
-            resultFilter: 'knowledge_total',
-            knowledgeOnly: true
-        });
+        retrievalQueries = this._buildAiRetrievalQueries(query);
 
-        for (index = 0; index < rankedResults.allResults.length && rankedKnowledge.length < this.AI_SOURCE_LIMIT; index++) {
-            if (rankedResults.allResults[index].resultType !== 'knowledge' || !rankedResults.allResults[index].sysId) {
-                continue;
+        for (queryIndex = 0; queryIndex < retrievalQueries.length; queryIndex++) {
+            rankedResultSets.push(this.searchKnowledge({
+                query: retrievalQueries[queryIndex],
+                page: 1,
+                pageSize: this.AI_SOURCE_LIMIT,
+                candidateLimit: candidateLimit,
+                includeBodySearch: this._toBoolean(request.includeBodySearch),
+                articlePageId: articlePageId,
+                catalogItemPageId: catalogItemPageId,
+                newsPageId: newsPageId,
+                newsContentTypeId: newsContentTypeId,
+                synonymDictionaryId: synonymDictionaryId,
+                portalSysId: portalSysId,
+                featuredKnowledgeBaseId: featuredKnowledgeBaseId,
+                featuredKnowledgeBaseLabel: featuredKnowledgeBaseLabel,
+                featuredTopicId: featuredTopicId,
+                resultFilter: 'knowledge_total',
+                knowledgeOnly: true
+            }));
+        }
+
+        // Multi-part questions reserve one source per intent before the overall ranking
+        // fills the remaining budget. Single-topic questions keep the original behavior.
+        if (rankedResultSets.length > 1) {
+            for (queryIndex = 1; queryIndex < rankedResultSets.length && rankedKnowledge.length < this.AI_SOURCE_LIMIT; queryIndex++) {
+                this._appendAiKnowledgeCandidates(rankedResultSets[queryIndex].allResults, rankedKnowledge, rankedIds, rankedIdMap, rankedTitleMap, 1);
             }
+        }
 
-            titleKey = this._normalizeSearchText(rankedResults.allResults[index].title);
+        this._appendAiKnowledgeCandidates(rankedResultSets[0].allResults, rankedKnowledge, rankedIds, rankedIdMap, rankedTitleMap, this.AI_SOURCE_LIMIT);
 
-            if (titleKey && rankedTitleMap[titleKey]) {
-                continue;
-            }
-
-            if (titleKey) {
-                rankedTitleMap[titleKey] = true;
-            }
-
-            rankedKnowledge.push(rankedResults.allResults[index]);
-            rankedIds.push(rankedResults.allResults[index].sysId);
+        for (queryIndex = 1; queryIndex < rankedResultSets.length && rankedKnowledge.length < this.AI_SOURCE_LIMIT; queryIndex++) {
+            this._appendAiKnowledgeCandidates(rankedResultSets[queryIndex].allResults, rankedKnowledge, rankedIds, rankedIdMap, rankedTitleMap, this.AI_SOURCE_LIMIT);
         }
 
         if (rankedIds.length === 0) {
@@ -328,6 +330,82 @@ superSearchEngine.prototype = {
         }
 
         return response;
+    },
+
+    _buildAiRetrievalQueries: function(query) {
+        var cleanedQuery = this._cleanQuery(query);
+        var normalizedQuery = this._normalizeQuery(cleanedQuery);
+        var segments = cleanedQuery.split(/[,;\n\/]+/);
+        var intentQueries = [];
+        var uniqueQueries = {};
+        var segment;
+        var normalizedSegment;
+        var searchableTokens;
+        var index;
+
+        if (!normalizedQuery || segments.length < 2) {
+            return [cleanedQuery];
+        }
+
+        uniqueQueries[normalizedQuery] = true;
+
+        for (index = 0; index < segments.length && intentQueries.length < this.AI_INTENT_QUERY_LIMIT; index++) {
+            segment = this._cleanQuery(segments[index])
+                .replace(/^\s*(?:and|or|og|eller)\s+/i, '')
+                .replace(/[?.!]+$/g, '');
+            normalizedSegment = this._normalizeQuery(segment);
+
+            if (!normalizedSegment || normalizedSegment.length < 3 || uniqueQueries[normalizedSegment]) {
+                continue;
+            }
+
+            searchableTokens = this._getSearchableTokens(this._tokenize(this._normalizeSearchText(segment)));
+
+            if (searchableTokens.length === 0) {
+                continue;
+            }
+
+            uniqueQueries[normalizedSegment] = true;
+            intentQueries.push(segment);
+        }
+
+        if (intentQueries.length < 2) {
+            return [cleanedQuery];
+        }
+
+        intentQueries.unshift(cleanedQuery);
+        return intentQueries;
+    },
+
+    _appendAiKnowledgeCandidates: function(results, rankedKnowledge, rankedIds, rankedIdMap, rankedTitleMap, maximumToAdd) {
+        var added = 0;
+        var result;
+        var titleKey;
+        var index;
+
+        for (index = 0; results && index < results.length && rankedKnowledge.length < this.AI_SOURCE_LIMIT && added < maximumToAdd; index++) {
+            result = results[index];
+
+            if (result.resultType !== 'knowledge' || !result.sysId || rankedIdMap[result.sysId]) {
+                continue;
+            }
+
+            titleKey = this._normalizeSearchText(result.title);
+
+            if (titleKey && rankedTitleMap[titleKey]) {
+                continue;
+            }
+
+            rankedIdMap[result.sysId] = true;
+
+            if (titleKey) {
+                rankedTitleMap[titleKey] = true;
+            }
+
+            rankedKnowledge.push(result);
+            rankedIds.push(result.sysId);
+            added++;
+        }
     },
 
     _canReadKnowledgeRecordAndText: function(record, context) {

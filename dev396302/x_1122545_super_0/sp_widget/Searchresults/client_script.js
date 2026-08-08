@@ -7,6 +7,7 @@ api.controller = function($window) {
   c.aiAnswer = {
     status: 'idle',
     answer: '',
+    blocks: [],
     citations: []
   };
   var aiRequestSequence = 0;
@@ -53,6 +54,7 @@ api.controller = function($window) {
     loadingState = {
       status: 'loading',
       answer: '',
+      blocks: [],
       citations: [],
       queryKey: queryKey
     };
@@ -100,9 +102,101 @@ api.controller = function($window) {
     return {
       status: status,
       answer: status === 'ready' ? String(serverAnswer.answer || '') : '',
+      blocks: status === 'ready' ? c.parseAiAnswer(serverAnswer.answer) : [],
       citations: status === 'ready' && angular.isArray(serverAnswer.citations) ? serverAnswer.citations : [],
       queryKey: queryKey
     };
+  };
+
+  c.parseAiAnswer = function(value) {
+    var text = String(value || '')
+      .replace(/\r\n?/g, '\n')
+      .replace(/\s+-\s+(?=\*\*)/g, '\n- ')
+      .replace(/^\s+|\s+$/g, '');
+    var lines = text ? text.split('\n') : [];
+    var blocks = [];
+    var currentList = null;
+    var line;
+    var bulletMatch;
+    var index;
+
+    for (index = 0; index < lines.length; index++) {
+      line = lines[index].replace(/^\s+|\s+$/g, '');
+
+      if (!line) {
+        currentList = null;
+        continue;
+      }
+
+      bulletMatch = /^[-*]\s+(.+)$/.exec(line);
+
+      if (bulletMatch) {
+        if (!currentList) {
+          currentList = {
+            type: 'list',
+            items: []
+          };
+          blocks.push(currentList);
+        }
+
+        currentList.items.push(c.parseAiInlineMarkdown(bulletMatch[1]));
+        continue;
+      }
+
+      currentList = null;
+      blocks.push({
+        type: 'paragraph',
+        parts: c.parseAiInlineMarkdown(line)
+      });
+    }
+
+    if (blocks.length === 0 && text) {
+      blocks.push({
+        type: 'paragraph',
+        parts: [{ text: text, strong: false }]
+      });
+    }
+
+    return blocks;
+  };
+
+  c.parseAiInlineMarkdown = function(value) {
+    var text = String(value || '');
+    var expression = /\*\*([^*]+)\*\*/g;
+    var parts = [];
+    var match;
+    var previousIndex = 0;
+
+    while ((match = expression.exec(text)) !== null) {
+      if (match.index > previousIndex) {
+        parts.push({
+          text: text.substring(previousIndex, match.index),
+          strong: false
+        });
+      }
+
+      parts.push({
+        text: match[1],
+        strong: true
+      });
+      previousIndex = expression.lastIndex;
+    }
+
+    if (previousIndex < text.length) {
+      parts.push({
+        text: text.substring(previousIndex),
+        strong: false
+      });
+    }
+
+    if (parts.length === 0) {
+      parts.push({
+        text: text,
+        strong: false
+      });
+    }
+
+    return parts;
   };
 
   c.normalizeFilter = function(value) {
@@ -242,6 +336,7 @@ api.controller = function($window) {
     c.aiAnswer = {
       status: 'idle',
       answer: '',
+      blocks: [],
       citations: [],
       queryKey: c.getAiQueryKey(nextQuery)
     };

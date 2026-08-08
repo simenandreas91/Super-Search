@@ -246,7 +246,24 @@
   font-size: 15px;
   line-height: 1.6;
   margin: 14px 0 0;
-  white-space: pre-line;
+}
+
+.super-search-results__answer-text p {
+  margin: 0 0 8px;
+}
+
+.super-search-results__answer-text p:last-child,
+.super-search-results__answer-text ul:last-child {
+  margin-bottom: 0;
+}
+
+.super-search-results__answer-text ul {
+  margin: 0 0 8px;
+  padding-left: 22px;
+}
+
+.super-search-results__answer-text li + li {
+  margin-top: 4px;
 }
 
 .super-search-results__answer-dots {

@@ -87,7 +87,18 @@
       Lager et svar fra relevante kunnskapsartikler<span class="super-search-results__answer-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>
     </p>
 
-    <p class="super-search-results__answer-text" ng-if="c.aiAnswer.status === 'ready'" ng-bind="c.aiAnswer.answer"></p>
+    <div class="super-search-results__answer-text" ng-if="c.aiAnswer.status === 'ready'">
+      <div ng-repeat="block in c.aiAnswer.blocks track by $index">
+        <p ng-if="block.type === 'paragraph'">
+          <span ng-repeat="part in block.parts track by $index"><strong ng-if="part.strong" ng-bind="part.text"></strong><span ng-if="!part.strong" ng-bind="part.text"></span></span>
+        </p>
+        <ul ng-if="block.type === 'list'">
+          <li ng-repeat="item in block.items track by $index">
+            <span ng-repeat="part in item track by $index"><strong ng-if="part.strong" ng-bind="part.text"></strong><span ng-if="!part.strong" ng-bind="part.text"></span></span>
+          </li>
+        </ul>
+      </div>
+    </div>
 
     <div class="super-search-results__answer-citations" ng-if="c.aiAnswer.status === 'ready' && c.aiAnswer.citations.length">
       <span class="super-search-results__answer-citations-label">Kilder</span>

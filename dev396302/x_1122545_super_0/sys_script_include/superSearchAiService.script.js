@@ -161,6 +161,7 @@ superSearchAiService.prototype = {
                 'Answer the user question in the same language as the question.',
                 'Use only facts explicitly supported by the supplied sources.',
                 'Answer the exact question directly and concisely; normally use one to three sentences or a short list for a multi-part question.',
+                'For a list, put each item on its own line and prefix it with "- ". You may use **bold** for short labels, but do not use headings, links, tables, or HTML.',
                 'For a multi-part question, answer every part separately and do not omit any part.',
                 'Exclude tangential exceptions, background, and recommendations unless they are necessary to answer the question.',
                 'Do not infer a yes or no answer from related facts. If the requested fact is not explicitly stated, set supported to false.',
@@ -255,7 +256,7 @@ superSearchAiService.prototype = {
             return this._result('error');
         }
 
-        if (!parsedOutput || parsedOutput.supported !== true || !this._cleanText(parsedOutput.answer)) {
+        if (!parsedOutput || parsedOutput.supported !== true || !this._cleanAnswer(parsedOutput.answer)) {
             return this._result('no_evidence');
         }
 
@@ -283,7 +284,7 @@ superSearchAiService.prototype = {
 
         return {
             status: 'ready',
-            answer: this._truncate(this._cleanText(parsedOutput.answer), this.MAX_ANSWER_CHARACTERS),
+            answer: this._truncate(this._cleanAnswer(parsedOutput.answer), this.MAX_ANSWER_CHARACTERS),
             citations: citations
         };
     },
@@ -363,6 +364,15 @@ superSearchAiService.prototype = {
 
     _cleanText: function(value) {
         return this._safeString(value).replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
+    },
+
+    _cleanAnswer: function(value) {
+        return this._safeString(value)
+            .replace(/\r\n?/g, '\n')
+            .replace(/[\t ]+/g, ' ')
+            .replace(/ *\n */g, '\n')
+            .replace(/\n{3,}/g, '\n\n')
+            .replace(/^\s+|\s+$/g, '');
     },
 
     _truncate: function(value, maximumLength) {
